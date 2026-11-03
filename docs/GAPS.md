@@ -236,3 +236,8 @@ Entradas: G01 a G30 (G29 y G30 al final). Campos condicionales (G30) y aviso de 
 - XSS por blob: solo PDF/JPG/PNG/WebP (tipo comprobado por magic bytes al subir y al importar; "Ver" revalida). Respaldos con otro tipo se rechazan enteros.
 - `importBackup` valida todo antes de escribir, una sola transaccion IndexedDB, un unico evento `all`, reversion de localStorage si falla, y descarga una copia de los datos previos antes de reemplazar.
 - Perfil: el autoguardado no pierde cambios si falla (cuota) y avisa; plantillas y perfil importados se normalizan (`app/js/backup-validate.js`, `normalizeTemplate`).
+
+## G-Pages Despliegue publicado  [VERIFICADO 2026-11-03]
+- Sitio en vivo: https://adriany1997.github.io/hv-generator/ (repo https://github.com/AdrianY1997/hv-generator, Pages con origen GitHub Actions). El primer push dejo en verde `pages.yml` y `ci.yml` (unitarias, e2e Chromium, axe, Firefox, WebKit) sin cambios en el codigo.
+- Verificado en vivo con Playwright: carga sin errores de consola, todos los recursos 200 (fuentes, `vendor/pdf-lib`, `vendor/pdfjs`), service worker activo con alcance `/hv-generator/` y `const VERSION` sellado con el SHA del commit, un campo del perfil persiste tras recargar, la Vista previa lo muestra y la recarga sin conexion (tras la primera visita) funciona.
+- Pendiente de actions: las acciones `checkout@v4` y `setup-node@v4` avisan de la deprecacion de Node 20 (hoy se fuerzan a Node 24); subir de version cuando salgan las nuevas mayores.
