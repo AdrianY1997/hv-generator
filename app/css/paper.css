@@ -1,0 +1,56 @@
+/* ==== PAPEL: documento HV (clases .hv-* / .mv-*) — réplica de docs/minerva.pdf ====
+   Este archivo es SOLO el papel (vista previa, impresión y HTML autónomo). No restilizar con el chrome de la app. */
+.hv-doc{--s:1;--pw:8.5in;--ph:11in;--pm:.5in;color:#000;font:10pt/1.3 Arial,"Liberation Sans",Helvetica,sans-serif}
+.hv-doc *{box-sizing:border-box}
+.hv-a4 .hv-doc{--s:.97273;--pw:210mm;--ph:297mm}
+
+/* Hojas del formulario: 612x792 pt escaladas a la hoja (A4 encaja el ancho) */
+.hv-sheet{position:relative;width:calc(612pt*var(--s));height:calc(792pt*var(--s));margin:0 auto 16px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);overflow:hidden;page:form;break-after:page}
+.mv-page{position:absolute;left:0;top:0;width:612pt;height:792pt;transform:scale(var(--s));transform-origin:0 0;background:#fff;color:#000;font-family:Arial,"Liberation Sans",Helvetica,sans-serif}
+.mv-bg,.mv-ov{position:absolute;left:0;top:0;display:block;pointer-events:none}
+.mv-bg text{white-space:pre}
+.mv-bg .fa{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;font-weight:400}
+.mv-bg .fb{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;font-weight:700}
+.mv-bg .fi{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;font-style:italic}
+.mv-bg .fbi{font-family:Arial,"Liberation Sans",Helvetica,sans-serif;font-weight:700;font-style:italic}
+.mv-bg .fk{font-family:"Arial Black","Arial Bold",Arial,"Liberation Sans",Helvetica,sans-serif;font-weight:900}
+.mv-ov path{fill:none;stroke:#000;stroke-width:1.3;stroke-linecap:round}
+.mv-f{position:absolute;display:flex;align-items:center;padding:0 2pt;overflow:hidden;white-space:nowrap;line-height:1.15;color:#000;font-family:Arial,"Liberation Sans",Helvetica,sans-serif}
+.mv-m{display:block;white-space:normal;padding:0 2pt;overflow:hidden;overflow-wrap:anywhere}
+.mv-photo{position:absolute;object-fit:cover;border-radius:6pt;display:block}
+
+/* Hojas de flujo: continuación y anexos */
+.hv-page{width:var(--pw);min-height:var(--ph);margin:0 auto 16px;padding:var(--pm);background:#fff;color:#000;box-shadow:0 1px 6px rgba(0,0,0,.25)}
+.hv-cont{--c:#144a7d;color:var(--c)}
+.hv-cont h1{margin:0 0 4pt;font:900 20pt/1.1 "Arial Black",Arial,"Liberation Sans",sans-serif;color:#000}
+.hv-cont h1 small{display:block;font:700 10pt Arial,"Liberation Sans",sans-serif;color:var(--c)}
+.hv-cont p{margin:0 0 10pt;font-size:8pt}
+.mv-cs{margin:0 0 12pt;break-inside:auto}
+.mv-cs h2{margin:0;padding:4pt 8pt;font:900 10pt "Arial Black",Arial,"Liberation Sans",sans-serif;color:#fff;background:#007bc0;border:.8pt solid var(--c);border-radius:6pt 6pt 0 0}
+.hv-tbl{width:100%;border-collapse:collapse;font-size:8pt}
+.hv-tbl th,.hv-tbl td{border:.8pt solid var(--c);padding:3pt 4pt;text-align:left;vertical-align:top;overflow-wrap:anywhere;color:#000}
+.hv-tbl th{font-size:6.5pt;font-weight:700;color:var(--c);background:#75bee9}
+.hv-tbl tr{break-inside:avoid}
+.hv-l{display:block;font-size:7pt;color:#444}
+.hv-annex{break-before:page;page:annex}
+.hv-annex>h2{margin:0 0 8px;font-size:12pt}
+.hv-fit{height:calc(var(--ph) - 2*var(--pm) - 40px);display:flex;align-items:center;justify-content:center}
+.hv-fit img{max-width:100%;max-height:100%;object-fit:contain}
+.hv-annex li{margin:4px 0}
+body.hv-standalone{margin:0;background:#888}
+
+@media print{
+  @page form{margin:0}
+  html,body{background:#fff!important}
+  .hv-doc,.hv-a4 .hv-doc{--pm:0in;--pw:100%;--ph:10in}
+  .hv-sheet{margin:0;box-shadow:none;break-inside:avoid}
+  .hv-sheet:last-child{break-after:auto}
+  .hv-page{width:100%;min-height:0;margin:0;padding:0;box-shadow:none}
+  .hv-cont{break-before:page}
+  .hv-annex{break-before:page}
+  .hv-fit{height:9.3in}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.mv-r{white-space:normal;align-items:flex-end;padding-bottom:1pt}
+.hv-card{margin:0 0 8pt;break-inside:avoid}
+.hv-card th{width:34%;font-size:7pt}

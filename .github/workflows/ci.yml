@@ -1,0 +1,128 @@
+name: CI
+
+# Pruebas del proyecto: unitarias (node:test), e2e con Playwright (Chromium completo; Firefox y WebKit en humo e impresión) y accesibilidad (axe).
+# Nada de esto toca app/ ni la despliega: ver pages.yml (el despliegue también corre las pruebas de Chromium antes de publicar).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una rama con push y PR abiertos comparte grupo (head_ref del PR = nombre de la rama del push): la ejecución nueva cancela la anterior.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  unit:
+    name: Unitarias (node:test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  e2e-chromium:
+    name: e2e Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests-e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests-e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:core
+      - name: Subir los PDF de impresión generados y sus cifras (G14)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: impresion-pdf
+          path: tests-e2e/out/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Subir trazas y capturas del fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-chromium-fallos
+          path: |
+            tests-e2e/test-results/
+            tests-e2e/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  a11y:
+    name: Accesibilidad (axe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests-e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests-e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run a11y
+      - name: Subir trazas y capturas del fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-fallos
+          path: |
+            tests-e2e/test-results/
+            tests-e2e/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  cross-browser:
+    name: Humo e impresión (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    defaults:
+      run:
+        working-directory: tests-e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests-e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Un solo worker: Firefox se queja al cerrar contextos en paralelo ("_maybeDontRestoreTabs").
+      - run: npx playwright test --project=${{ matrix.browser }} --workers=1
+      - name: Subir trazas, capturas y PDF del fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.browser }}-fallos
+          path: |
+            tests-e2e/test-results/
+            tests-e2e/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

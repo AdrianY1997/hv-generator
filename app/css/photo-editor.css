@@ -1,0 +1,30 @@
+/* Editor de foto (diálogo nativo con la forma de .mn-dialog de tokens.css). */
+.pe-dialog{padding:0;border:1px solid var(--color-line);border-radius:var(--radius-lg);background:var(--color-surface);color:var(--color-ink);font:400 var(--text-base)/var(--leading-body) var(--font-ui);box-shadow:var(--shadow-overlay);width:min(94vw,38rem);max-height:96vh;overflow:auto}
+.pe-dialog::backdrop{background:var(--color-scrim)}
+.pe-wrap{display:flex;flex-direction:column}
+.pe-head{align-items:center}
+.pe-body{display:grid;grid-template-columns:14rem minmax(0,1fr);gap:var(--space-5);align-items:start}
+.pe-stage{position:relative;width:100%;aspect-ratio:3/4;background:#fff;border:1px solid var(--color-line);border-radius:var(--radius-sm);overflow:hidden;touch-action:none;cursor:grab;user-select:none}
+.pe-stage.pe-drag{cursor:grabbing}
+.pe-canvas{display:block;width:100%;height:100%}
+.pe-guide{position:absolute;inset:0;pointer-events:none}
+.pe-guide svg{width:100%;height:100%;display:block}
+.pe-guide *{fill:none;stroke:rgba(255,255,255,.9);stroke-width:1.5;stroke-dasharray:5 4;filter:drop-shadow(0 0 1px rgba(0,0,0,.8))}
+.pe-guide .pe-grid{stroke-width:1;stroke-dasharray:none;stroke:rgba(255,255,255,.35)}
+.pe-side{display:grid;gap:var(--space-4);align-content:start;min-width:0}
+.pe-side>*{margin:0}
+.pe-ctrl{display:grid;gap:var(--space-4)}
+.pe-ctrl .mn-range{margin:var(--space-2) 0;width:100%}
+.pe-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.pe-stage:focus-visible,.pe-ctrl input:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.pe-err:empty{display:none}
+.pe-fmt{display:grid;gap:var(--space-3)}
+.pe-dims{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)}
+.pe-dims[hidden]{display:none}
+.pe-kbhelp{margin:var(--space-1) 0 0}
+.pe-foot{border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+@media (max-width:560px){
+  .pe-body{grid-template-columns:1fr}
+  .pe-stage{width:min(100%,15rem);justify-self:center}
+}
+@media (max-height:700px) and (min-width:561px){.pe-body{grid-template-columns:11rem minmax(0,1fr)}}

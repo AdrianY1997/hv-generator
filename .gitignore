@@ -1,0 +1,20 @@
+# recall / agentes / herramientas locales (no se publican)
+.recall/
+.claude/
+.agents/
+.playwright-mcp/
+
+# dependencias y salidas de pruebas
+node_modules/
+tests-e2e/node_modules/
+tests-e2e/test-results/
+tests-e2e/playwright-report/
+tests-e2e/out/
+
+# basura de sistema operativo y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+.vscode/
+.idea/

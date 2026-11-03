@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HV Minerva — Mockup del sistema de diseño</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* mockup-only layout */
+  .shot{max-width:var(--content-max);margin:0 auto;padding:var(--space-7) var(--space-5) 0}
+  .shot>.mn-eyebrow{display:block;margin-bottom:var(--space-4)}
+  .grid-perfil{display:grid;grid-template-columns:13rem minmax(0,1fr);gap:var(--space-7);align-items:start}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+  .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--space-4)}
+  .stack{display:grid;gap:var(--space-5)}
+  .page-head{display:flex;align-items:end;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-5)}
+  .page-head p{margin:var(--space-2) 0 0;color:var(--color-ink-2);max-width:52ch}
+  .sec-title{display:flex;align-items:baseline;gap:var(--space-3);margin:var(--space-6) 0 var(--space-4);padding-bottom:var(--space-3);border-bottom:1px solid var(--color-line)}
+  .sec-title .mn-num{font-size:var(--text-lg)}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+  .tree{display:grid;gap:var(--space-2);margin:0;padding:0;list-style:none}
+  .tree ul{list-style:none;margin:var(--space-2) 0 0;padding-left:var(--space-5);border-left:1px solid var(--color-line);display:grid;gap:var(--space-2)}
+  .mn-card__head h3{font-size:var(--text-md);font-weight:600}
+  .mock-shell{border:1px solid var(--color-line);border-radius:var(--radius-md);overflow:hidden;background:var(--color-bg)}
+  .mock-shell .mn-header{border-radius:0}
+  .model-sel{display:flex;align-items:center;gap:var(--space-2)}
+  .model-sel .mn-select{min-height:2rem;width:auto;padding:.3rem 2rem .3rem var(--space-3);font-size:var(--text-sm)}
+  .dialog-demo{position:relative;background:var(--color-scrim);border-radius:var(--radius-md);padding:var(--space-6);display:grid;place-items:center}
+  .dialog-demo .mn-scrim{position:static;background:none;padding:0;width:100%}
+  .swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:var(--space-2)}
+  .sw{border:1px solid var(--color-line);border-radius:var(--radius-sm);overflow:hidden;font-size:.6875rem;line-height:1.3}
+  .sw i{display:block;height:2.4rem}.sw span{display:block;padding:.3rem .4rem;background:var(--color-surface)}
+  /* HV sample */
+  .hv-head{display:grid;grid-template-columns:1fr 22mm;gap:6mm;align-items:start}
+  .hv-photo{width:22mm;height:29mm;background:#d9d4c8;border:.5pt solid #999}
+  .hv-two{display:grid;grid-template-columns:1fr 1fr;gap:2mm 8mm}
+  .hv-doc{font-size:9.5pt}
+  .hv-doc p{margin:0}
+  .mn-page{aspect-ratio:auto;min-height:250mm;padding:14mm}
+  @media (max-width:760px){.grid-perfil,.row2,.row3,.cols3{grid-template-columns:1fr}.mn-sidenav{position:static}.swatches{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Icon set: 24px grid, 1.5 stroke, round caps, currentColor -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5V18a1 1 0 0 0 1 1h15a1 1 0 0 0 1-1V9.5a1 1 0 0 0-1-1H12l-2-2.5H4.5a1 1 0 0 0-1 1.5Z"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.5h16M10 9.5V20"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9M4.5 15v3.5a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V15"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12h9.4l.8-12M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v11M7.5 11 12 15.5 16.5 11M4.5 19.5h15"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V4.5h10V9M7 17.5H4.5v-7h15v7H17M7 14h10v5.5H7Z"/></symbol>
+    <symbol id="i-zoom-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M10.5 8v5M8 10.5h5"/></symbol>
+    <symbol id="i-zoom-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8 10.5h5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 21 19.5H3Z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11.5-7 7a4.5 4.5 0 0 1-6.4-6.4l7.5-7.5a3 3 0 0 1 4.2 4.2l-7.5 7.5a1.5 1.5 0 0 1-2.1-2.1l6.8-6.8"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===== Header + Perfil ===== -->
+<div class="shot">
+  <span class="mn-eyebrow">01 · Cabecera y Perfil</span>
+  <div class="mock-shell">
+    <header class="mn-header">
+      <a class="mn-brand" href="#">HV <b>Minerva</b></a>
+      <label class="model-sel"><span class="mn-label">Modelo</span>
+        <select class="mn-select" aria-label="Modelo de hoja de vida"><option>Formato Función Pública</option></select></label>
+      <nav class="mn-nav" aria-label="Principal">
+        <a href="#" aria-current="page">Perfil</a><a href="#">Documentos</a><a href="#">Plantillas</a><a href="#">Vista previa</a>
+      </nav>
+      <button class="mn-btn mn-btn--quiet mn-btn--icon" aria-label="Cambiar tema"><svg><use href="#i-moon"/></svg></button>
+    </header>
+
+    <div style="padding:var(--space-6) var(--space-5)">
+      <div class="grid-perfil">
+        <nav class="mn-sidenav" aria-label="Secciones del perfil">
+          <a href="#" aria-current="true">Datos personales</a>
+          <a href="#">Formación académica</a>
+          <a href="#">Experiencia laboral</a>
+          <a href="#">Idiomas</a>
+          <a href="#">Referencias</a>
+        </nav>
+        <div>
+          <div class="page-head">
+            <div>
+              <span class="mn-eyebrow">Perfil</span>
+              <h1 style="margin-top:var(--space-2)">Cuéntanos quién eres</h1>
+              <p>Escribe una vez; úsalo en todos tus formatos. Todo se guarda en este equipo.</p>
+            </div>
+            <span class="mn-badge mn-badge--ok"><svg width="12" height="12"><use href="#i-check"/></svg>Guardado</span>
+          </div>
+
+          <div class="sec-title"><span class="mn-num">01</span><h2>Datos personales</h2></div>
+          <div class="stack">
+            <div class="row3">
+              <div class="mn-field"><label class="mn-label" for="n">Nombres completos <span class="mn-req">*</span></label><input id="n" class="mn-input" value="María Fernanda"></div>
+              <div class="mn-field"><label class="mn-label" for="a">Apellidos <span class="mn-req">*</span></label><input id="a" class="mn-input" value="Rojas Cifuentes"></div>
+              <div class="mn-field"><label class="mn-label" for="t">Documento</label><select id="t" class="mn-select"><option>C.C.</option></select></div>
+            </div>
+            <div class="row2">
+              <div class="mn-field"><label class="mn-label" for="c">Número de cédula <span class="mn-req">*</span></label><input id="c" class="mn-input" value="1.020.345.678"><span class="mn-help">Sin puntos también funciona.</span></div>
+              <div class="mn-field"><label class="mn-label" for="e">Correo electrónico</label><input id="e" class="mn-input" value="maria.rojas@correo" aria-invalid="true"><span class="mn-error"><svg width="14" height="14"><use href="#i-alert"/></svg>Falta el dominio, por ejemplo @gmail.com</span></div>
+            </div>
+          </div>
+
+          <div class="sec-title"><span class="mn-num">03</span><h2>Experiencia laboral</h2><button class="mn-btn mn-btn--sm" style="margin-left:auto"><svg><use href="#i-plus"/></svg>Agregar experiencia</button></div>
+          <div class="stack">
+            <article class="mn-card mn-card--item">
+              <div class="mn-card__head"><h3>Profesional Universitaria · Alcaldía de Medellín</h3><button class="mn-btn mn-btn--quiet mn-btn--sm mn-btn--icon" aria-label="Eliminar experiencia"><svg><use href="#i-trash"/></svg></button></div>
+              <div class="row2">
+                <div class="mn-field"><label class="mn-label" for="i1">Ingreso</label><input id="i1" class="mn-input" value="03/2021"></div>
+                <div class="mn-field"><label class="mn-label" for="r1">Retiro</label><input id="r1" class="mn-input" placeholder="Actual"></div>
+              </div>
+              <div class="mn-field" style="margin-top:var(--space-4)"><label class="mn-label" for="d1">Funciones</label><textarea id="d1" class="mn-textarea">Coordinación de proyectos de gestión documental y atención al ciudadano.</textarea></div>
+              <div style="margin-top:var(--space-4)">
+                <span class="mn-label" style="display:block;margin-bottom:var(--space-2)">Certificado laboral</span>
+                <div class="mn-slot mn-slot--filled">
+                  <span class="mn-chip"><svg><use href="#i-clip"/></svg>certificado-alcaldia.pdf · 212 KB<button aria-label="Quitar archivo"><svg width="12" height="12"><use href="#i-x"/></svg></button></span>
+                  <span class="mn-badge mn-badge--ok"><svg width="12" height="12"><use href="#i-check"/></svg>Adjunto</span>
+                </div>
+              </div>
+            </article>
+            <article class="mn-card mn-card--item">
+              <div class="mn-card__head"><h3>Auxiliar administrativa · Notaría 12</h3></div>
+              <div class="mn-slot">
+                <svg width="18" height="18" style="color:var(--color-ink-2)"><use href="#i-upload"/></svg>
+                <span style="color:var(--color-ink-2);font-size:var(--text-sm)">Arrastra el certificado aquí o</span>
+                <button class="mn-btn mn-btn--sm">Elegir archivo</button>
+                <span class="mn-badge mn-badge--warn" style="margin-left:auto">Pendiente</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Documentos ===== -->
+<div class="shot">
+  <span class="mn-eyebrow">02 · Documentos</span>
+  <div class="page-head">
+    <div><h1>Documentos requeridos</h1><p>Reúne estos soportes antes de radicar tu hoja de vida.</p></div>
+    <div style="display:flex;align-items:center;gap:var(--space-4)"><div style="text-align:right"><span class="mn-eyebrow">Avance</span><div style="font:500 var(--text-xl)/1 var(--font-display);margin-top:var(--space-1)">8 <span style="color:var(--color-ink-3)">/ 11</span></div></div><span class="mn-stamp">73%</span></div>
+  </div>
+  <div class="mn-progress" style="--value:73%;margin-bottom:var(--space-5)" role="progressbar" aria-valuenow="73" aria-valuemin="0" aria-valuemax="100" aria-label="Documentos completados"><i></i></div>
+  <div class="mn-card" style="padding-top:var(--space-2);padding-bottom:var(--space-2)">
+    <div class="mn-doc" data-state="done"><span class="mn-doc__mark"><svg width="14" height="14"><use href="#i-check"/></svg></span><div><div class="mn-doc__title">Cédula de ciudadanía</div><div class="mn-doc__meta">cedula-frente-reverso.pdf</div></div><span class="mn-badge mn-badge--ok">Listo</span></div>
+    <div class="mn-doc" data-state="done"><span class="mn-doc__mark"><svg width="14" height="14"><use href="#i-check"/></svg></span><div><div class="mn-doc__title">Antecedentes disciplinarios — Procuraduría</div><div class="mn-doc__meta">Vigente hasta 12 de enero de 2027</div></div><span class="mn-badge mn-badge--ok">Listo</span></div>
+    <div class="mn-doc"><span class="mn-doc__mark"></span><div><div class="mn-doc__title">Antecedentes fiscales — Contraloría</div><div class="mn-doc__meta">Aún no has adjuntado este documento</div></div><button class="mn-btn mn-btn--sm"><svg><use href="#i-upload"/></svg>Adjuntar</button></div>
+    <div class="mn-doc"><span class="mn-doc__mark"></span><div><div class="mn-doc__title">Antecedentes judiciales — Policía Nacional</div><div class="mn-doc__meta" style="color:var(--color-warn)">Vencido hace 12 días, descarga uno nuevo</div></div><span class="mn-badge mn-badge--danger">Vencido</span></div>
+    <div class="mn-doc"><span class="mn-doc__mark"></span><div><div class="mn-doc__title">Inhabilidades por delitos sexuales contra menores</div><div class="mn-doc__meta">Certificado del Registro Nacional de Inhabilidades</div></div><button class="mn-btn mn-btn--sm"><svg><use href="#i-upload"/></svg>Adjuntar</button></div>
+  </div>
+</div>
+
+<!-- ===== Plantillas ===== -->
+<div class="shot">
+  <span class="mn-eyebrow">03 · Plantillas</span>
+  <div class="page-head"><div><h1>Tus formatos</h1><p>Elige qué secciones llevará cada formato.</p></div><button class="mn-btn mn-btn--primary"><svg><use href="#i-plus"/></svg>Nueva plantilla</button></div>
+  <div class="cols3" style="margin-bottom:var(--space-6)">
+    <article class="mn-card mn-card--select" aria-selected="true"><span class="mn-eyebrow">Predeterminada</span><h3 style="margin:var(--space-2) 0">Función Pública</h3><p style="margin:0;color:var(--color-ink-2);font-size:var(--text-sm)">Formato único de hoja de vida, 5 secciones.</p></article>
+    <article class="mn-card mn-card--select" aria-selected="false"><span class="mn-eyebrow">Propia</span><h3 style="margin:var(--space-2) 0">Contratación directa</h3><p style="margin:0;color:var(--color-ink-2);font-size:var(--text-sm)">Experiencia y formación resumidas.</p></article>
+    <article class="mn-card mn-card--select" aria-selected="false"><span class="mn-eyebrow">Propia</span><h3 style="margin:var(--space-2) 0">Sector privado</h3><p style="margin:0;color:var(--color-ink-2);font-size:var(--text-sm)">Perfil breve, una página.</p></article>
+  </div>
+  <div class="mn-tabs" role="tablist" style="margin-bottom:var(--space-5)"><button role="tab" aria-selected="true">Estructura</button><button role="tab" aria-selected="false">Orden</button><button role="tab" aria-selected="false">Estilo</button></div>
+  <div class="mn-card"><ul class="tree">
+    <li><label class="mn-check"><input type="checkbox" checked> Datos personales</label></li>
+    <li><label class="mn-check"><input type="checkbox" id="ind"> Formación académica</label>
+      <ul><li><label class="mn-check"><input type="checkbox" checked> Educación superior</label></li><li><label class="mn-check"><input type="checkbox"> Educación básica</label></li></ul></li>
+    <li><label class="mn-check"><input type="checkbox" checked> Experiencia laboral</label></li>
+  </ul></div>
+</div>
+
+<!-- ===== Vista previa ===== -->
+<div class="shot">
+  <span class="mn-eyebrow">04 · Vista previa</span>
+  <div class="mn-toolbar" style="margin-bottom:var(--space-3)">
+    <button class="mn-btn mn-btn--quiet mn-btn--sm mn-btn--icon" aria-label="Alejar"><svg><use href="#i-zoom-out"/></svg></button>
+    <span style="font-size:var(--text-sm);min-width:3rem;text-align:center;font-variant-numeric:tabular-nums">100%</span>
+    <button class="mn-btn mn-btn--quiet mn-btn--sm mn-btn--icon" aria-label="Acercar"><svg><use href="#i-zoom-in"/></svg></button>
+    <span style="margin-left:auto;display:flex;gap:var(--space-2)"><button class="mn-btn mn-btn--sm"><svg><use href="#i-print"/></svg>Imprimir</button><button class="mn-btn mn-btn--primary mn-btn--sm"><svg><use href="#i-download"/></svg>Descargar PDF</button></span>
+  </div>
+  <div class="mn-canvas">
+    <div class="mn-page hv-doc">
+      <div class="hv-head">
+        <div><h1>María Fernanda Rojas Cifuentes</h1>
+        <p class="hv-sub">C.C. 1.020.345.678 · Medellín, Antioquia · 300 123 4567 · maria.rojas@correo.com</p></div>
+        <div class="hv-photo" role="img" aria-label="Fotografía 3x4"></div>
+      </div>
+      <h2>Perfil profesional</h2>
+      <p>Administradora pública con cinco años de experiencia en gestión documental, atención al ciudadano y coordinación de proyectos en entidades del orden municipal.</p>
+      <h2>Formación académica</h2>
+      <div class="hv-item"><span class="hv-item__d">2015 – 2020</span><div class="hv-item__t">Administración Pública</div><div>Escuela Superior de Administración Pública, Bogotá. Título obtenido.</div></div>
+      <h2>Experiencia laboral</h2>
+      <div class="hv-item"><span class="hv-item__d">03/2021 – Actual</span><div class="hv-item__t">Profesional Universitaria — Alcaldía de Medellín</div><div>Coordinación de proyectos de gestión documental; atención de 400 solicitudes mensuales.</div></div>
+      <div class="hv-item"><span class="hv-item__d">02/2019 – 02/2021</span><div class="hv-item__t">Auxiliar administrativa — Notaría 12 de Medellín</div><div>Radicación, archivo y atención al público.</div></div>
+      <h2>Idiomas</h2>
+      <div class="hv-two"><div>Español — Nativo</div><div>Inglés — B2 (lectura y conversación)</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Dialog + toast + empty ===== -->
+<div class="shot">
+  <span class="mn-eyebrow">05 · Diálogo, aviso y estado vacío</span>
+  <div class="dialog-demo">
+    <div class="mn-scrim"><div class="mn-dialog" role="dialog" aria-modal="true" aria-labelledby="dt" style="margin:0 auto">
+      <div class="mn-dialog__head"><h2 id="dt">Ajusta tu fotografía</h2><button class="mn-btn mn-btn--quiet mn-btn--icon mn-btn--sm" aria-label="Cerrar"><svg><use href="#i-x"/></svg></button></div>
+      <div class="mn-dialog__body" style="display:grid;grid-template-columns:11rem 1fr;gap:var(--space-5)">
+        <div class="mn-crop" style="background:linear-gradient(160deg,#8e8a7c,#4d4a41)"></div>
+        <div class="stack" style="align-content:start;gap:var(--space-4)">
+          <p class="mn-help" style="margin:0">Encuadre 3:4, como lo piden las entidades. Mueve la imagen para centrar tu rostro.</p>
+          <div class="mn-field"><label class="mn-label" for="z">Zoom</label><input id="z" class="mn-range" type="range"></div>
+          <div class="mn-field"><label class="mn-label" for="b">Brillo</label><input id="b" class="mn-range" type="range"></div>
+        </div>
+      </div>
+      <div class="mn-dialog__foot"><button class="mn-btn mn-btn--quiet">Cancelar</button><button class="mn-btn mn-btn--primary">Guardar foto</button></div>
+    </div></div>
+  </div>
+  <div class="row2" style="margin-top:var(--space-5);align-items:start">
+    <div class="mn-empty"><svg width="36" height="36" style="color:var(--color-ink-3)"><use href="#i-folder"/></svg><h3>Aún no hay plantillas propias</h3><p>Crea una para repetir tu estructura favorita en cada convocatoria.</p><button class="mn-btn mn-btn--primary"><svg><use href="#i-plus"/></svg>Crear plantilla</button></div>
+    <div class="stack"><div class="mn-toast" role="status"><svg><use href="#i-check"/></svg>Tu hoja de vida se guardó en este equipo.</div>
+    <div class="swatches" aria-label="Paleta" id="sw"></div></div>
+  </div>
+</div>
+<div style="height:var(--space-8)"></div>
+
+<script>
+  var q=new URLSearchParams(location.search).get('theme');
+  if(q) document.documentElement.dataset.theme=q;
+  var names=['bg','surface','sunken','ink','ink-2','line-strong','accent','accent-soft'];
+  var sw=document.getElementById('sw');
+  names.forEach(function(n){sw.insertAdjacentHTML('beforeend','<div class="sw"><i style="background:var(--color-'+n+')"></i><span>'+n+'</span></div>')});
+</script>
+</body>
+</html>

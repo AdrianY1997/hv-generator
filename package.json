@@ -1,0 +1,13 @@
+{
+  "name": "hv-minerva",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Solo atajos para desarrollo. La app (app/) es estática, sin build ni dependencias; las pruebas viven en app/tests (unitarias) y tests-e2e/ (Playwright).",
+  "scripts": {
+    "test": "node --test \"app/tests/*.test.mjs\"",
+    "test:e2e": "npm --prefix tests-e2e run test:e2e",
+    "a11y": "npm --prefix tests-e2e run a11y",
+    "test:all": "npm test && npm run test:e2e"
+  }
+}

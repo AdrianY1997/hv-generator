@@ -1,0 +1,33 @@
+/* Diálogo de importación de respaldo (G12): usa .mn-dialog de tokens.css; solo añade la disposición interna. */
+.imp-dialog{width:min(40rem,calc(100vw - 2rem))}
+.imp-body{display:grid;gap:var(--space-4)}
+.imp-body p{margin:0}
+.imp-sum{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:var(--space-1) var(--space-4);margin:0}
+.imp-sum dt{color:var(--color-ink-soft,var(--color-ink));font-weight:600}
+.imp-sum dd{margin:0}
+.imp-modes{display:grid;gap:var(--space-2);border:1px solid var(--color-line);border-radius:var(--radius-md,6px);padding:var(--space-3) var(--space-4);margin:0}
+.imp-opt{display:grid;grid-template-columns:auto 1fr;gap:var(--space-3);align-items:start;cursor:pointer}
+.imp-opt--sub{margin-left:var(--space-6,1.5rem)}
+.imp-opt.is-disabled{opacity:.55;cursor:default}
+.imp-opt input{margin-top:.3em}
+.imp-hint{display:block}
+.imp-preview{border-top:1px solid var(--color-line);padding-top:var(--space-3)}
+.imp-preview ul{margin:var(--space-1) 0 0;padding-left:var(--space-5)}
+.imp-h{margin:0;font-size:var(--text-base);font-weight:600}
+@media (max-width:30rem){.imp-sum{grid-template-columns:1fr}.imp-opt--sub{margin-left:0}}
+/* Contraseña del respaldo (G05) */
+.imp-dialog--sm{width:min(30rem,calc(100vw - 2rem))}
+.imp-pass{display:grid;gap:var(--space-2);margin-top:var(--space-2)}
+.imp-pass .mn-field{gap:var(--space-1)}
+.imp-opt--show{margin-top:calc(var(--space-1) * -1)}
+.imp-strength{margin:0}
+.imp-bar{display:block;height:.375rem;border-radius:999px;background:var(--color-sunken);overflow:hidden}
+.imp-bar__fill{display:block;height:100%;width:0;background:var(--color-danger);transition:width var(--dur-base,.2s) var(--ease,ease)}
+.imp-bar[data-level="1"] .imp-bar__fill{width:35%}
+.imp-bar[data-level="2"] .imp-bar__fill{width:60%;background:var(--color-warn)}
+.imp-bar[data-level="3"] .imp-bar__fill{width:80%;background:var(--color-accent)}
+.imp-bar[data-level="4"] .imp-bar__fill{width:100%;background:var(--color-accent)}
+.imp-bar[data-level="0"] .imp-bar__fill{width:12%}
+.imp-warn{margin:0;padding:var(--space-2) var(--space-3);border-left:3px solid var(--color-warn);background:var(--color-warn-soft);font-size:var(--text-sm)}
+.imp-safe{display:grid;gap:var(--space-2)}
+@media (prefers-reduced-motion:reduce){.imp-bar__fill{transition:none}}

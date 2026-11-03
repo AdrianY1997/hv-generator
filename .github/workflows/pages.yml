@@ -1,0 +1,60 @@
+name: Deploy app to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # El despliegue solo ocurre si pasan las pruebas unitarias, la accesibilidad y el e2e de Chromium (el CI completo, con Firefox y WebKit, corre en ci.yml).
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests-e2e/package-lock.json
+      - run: npm test
+      - run: npm ci
+        working-directory: tests-e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: tests-e2e
+      - run: npm run test:e2e:core
+        working-directory: tests-e2e
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Versionar el service worker (cache por commit)
+        run: sed -i "s/__BUILD__/${GITHUB_SHA::10}/" app/sw.js
+      - name: Comprobar que el sello quedó en el service worker
+        run: grep -q "const VERSION = '[0-9a-f]\{10\}'" app/sw.js
+      - name: Quitar pruebas del artefacto (solo se publica la app)
+        run: rm -rf app/tests
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app
+      - id: deployment
+        uses: actions/deploy-pages@v4

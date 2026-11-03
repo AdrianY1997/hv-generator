@@ -1,0 +1,279 @@
+/* ==========================================================================
+   HV Minerva — tokens.css  ·  "Papelería de notaría"
+   Paper neutrals + one ink accent (verde tintero). Hairlines, not shadows.
+   Fonts self-hosted (OFL): Newsreader (display/serif), Inter (UI). Paths are
+   relative to this file; adjust url() when copying into app/.
+   Theme switch: <html data-theme="dark"> (also honours prefers-color-scheme
+   when no data-theme is set).  Component classes are prefixed `mn-`.
+   ========================================================================== */
+
+@font-face{font-family:"Newsreader";src:url("fonts/Newsreader-var.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
+@font-face{font-family:"Newsreader";src:url("fonts/Newsreader-italic-var.woff2") format("woff2");font-weight:200 800;font-style:italic;font-display:swap}
+@font-face{font-family:"Inter";src:url("fonts/Inter-var.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+
+:root{
+  color-scheme: light;
+
+  /* ---- Color: light ("papel") ---- */
+  --color-bg:#F5F1E8;            /* app canvas, warm paper */
+  --color-surface:#FCFAF5;       /* cards, inputs, header */
+  --color-sunken:#EAE4D6;        /* preview canvas, wells, table heads */
+  --color-ink:#1C1A16;           /* primary text            15.4:1 on bg */
+  --color-ink-2:#55503F;         /* secondary text           7.2:1 */
+  --color-ink-3:#6B6453;         /* tertiary/placeholder     5.2:1 (4.6 on sunken) */
+  --color-line:#D9D0BC;          /* hairlines, decorative dividers */
+  --color-line-strong:#8A816C;   /* input/checkbox borders (non-text 3.4–3.7:1) */
+  --color-accent:#1D4B41;        /* verde tintero            8.7:1 on bg */
+  --color-accent-hover:#133A32;
+  --color-accent-soft:#DEEAE3;   /* accent tint (selected, done) */
+  --color-on-accent:#FBF9F4;     /* text on accent           9.3:1 */
+  --color-warn:#7A4F00;  --color-warn-soft:#F4E6C4;   /* 5.8:1 */
+  --color-danger:#9E2A1C; --color-danger-soft:#F5DAD3; /* 5.7:1 */
+  --color-focus:#1D4B41;         /* focus ring = accent, 2px + 2px offset */
+  --color-scrim:rgba(28,26,22,.48);
+  --color-paper:#FFFFFF;         /* the printed HV sheet: always white */
+  --color-paper-ink:#111111;
+
+  /* ---- Typography ---- */
+  --font-display:"Newsreader","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --font-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --text-xs:.75rem;   /* 12 · eyebrow, badges   */
+  --text-sm:.8125rem; /* 13 · helper, chips     */
+  --text-base:.9375rem; /* 15 · body / inputs   */
+  --text-md:1.0625rem;  /* 17 · card titles     */
+  --text-lg:1.375rem;   /* 22 · section titles  */
+  --text-xl:1.875rem;   /* 30 · page titles     */
+  --text-2xl:2.5rem;    /* 40 · hero / empty    */
+  --leading-tight:1.15; --leading-snug:1.35; --leading-body:1.55;
+  --tracking-eyebrow:.14em;
+
+  /* ---- Space (4px base) ---- */
+  --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem;
+  --space-5:1.5rem; --space-6:2rem; --space-7:3rem; --space-8:4.5rem;
+
+  /* ---- Radius: nearly square, like die-cut stationery ---- */
+  --radius-xs:2px; --radius-sm:4px; --radius-md:6px; --radius-lg:10px; --radius-pill:999px;
+
+  /* ---- Elevation: hairline first, shadow only for things that lift ---- */
+  --shadow-0:none;
+  --shadow-1:0 1px 0 rgba(28,26,22,.04);
+  --shadow-paper:0 1px 2px rgba(28,26,22,.10),0 12px 32px -12px rgba(28,26,22,.22);
+  --shadow-overlay:0 2px 4px rgba(28,26,22,.10),0 24px 64px -16px rgba(28,26,22,.38);
+
+  /* ---- Motion ---- */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --dur-fast:120ms; --dur-base:200ms; --dur-slow:320ms;
+
+  /* ---- Layout ---- */
+  --content-max:72rem; --form-max:46rem; --header-h:3.5rem;
+}
+
+/* ---- Dark ("tinta sobre carbón"): warm near-black, accent lightened ---- */
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --color-bg:#15130F; --color-surface:#1E1B16; --color-sunken:#0E0D0A;
+  --color-ink:#EBE5D6; --color-ink-2:#B3AB97; --color-ink-3:#9A9380;
+  --color-line:#36322A; --color-line-strong:#7A735F;
+  --color-accent:#86C7B2; --color-accent-hover:#A3D8C6; --color-accent-soft:#1B2C27;
+  --color-on-accent:#0D1C18;
+  --color-warn:#E3B65A; --color-warn-soft:#2E2512;
+  --color-danger:#F09482; --color-danger-soft:#331A15;
+  --color-focus:#A3D8C6; --color-scrim:rgba(0,0,0,.62);
+  --shadow-1:0 1px 0 rgba(0,0,0,.3);
+  --shadow-paper:0 1px 2px rgba(0,0,0,.5),0 14px 36px -12px rgba(0,0,0,.7);
+  --shadow-overlay:0 2px 4px rgba(0,0,0,.5),0 24px 64px -16px rgba(0,0,0,.8);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --color-bg:#15130F; --color-surface:#1E1B16; --color-sunken:#0E0D0A;
+    --color-ink:#EBE5D6; --color-ink-2:#B3AB97; --color-ink-3:#9A9380;
+    --color-line:#36322A; --color-line-strong:#7A735F;
+    --color-accent:#86C7B2; --color-accent-hover:#A3D8C6; --color-accent-soft:#1B2C27;
+    --color-on-accent:#0D1C18;
+    --color-warn:#E3B65A; --color-warn-soft:#2E2512;
+    --color-danger:#F09482; --color-danger-soft:#331A15;
+    --color-focus:#A3D8C6; --color-scrim:rgba(0,0,0,.62);
+    --shadow-1:0 1px 0 rgba(0,0,0,.3);
+    --shadow-paper:0 1px 2px rgba(0,0,0,.5),0 14px 36px -12px rgba(0,0,0,.7);
+    --shadow-overlay:0 2px 4px rgba(0,0,0,.5),0 24px 64px -16px rgba(0,0,0,.8);
+  }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--color-bg);color:var(--color-ink);font:400 var(--text-base)/var(--leading-body) var(--font-ui);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;line-height:var(--leading-tight);letter-spacing:-.01em;margin:0}
+h1{font-size:var(--text-xl)} h2{font-size:var(--text-lg)} h3{font-size:var(--text-md)}
+a{color:var(--color-accent);text-underline-offset:.2em;text-decoration-thickness:1px}
+::selection{background:var(--color-accent-soft);color:var(--color-ink)}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px;border-radius:var(--radius-xs)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.mn-eyebrow{font:600 var(--text-xs)/1 var(--font-ui);letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--color-ink-2)}
+.mn-num{font-family:var(--font-display);font-style:italic;font-weight:400;color:var(--color-accent);font-variant-numeric:oldstyle-nums}
+.mn-rule{border:0;border-top:1px solid var(--color-line);margin:var(--space-5) 0}
+.mn-rule--double{border-top:3px double var(--color-line-strong)}
+.mn-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ==========================================================================
+   Header + nav  (nav = underlined text links, not pills)
+   ========================================================================== */
+.mn-header{display:flex;align-items:center;gap:var(--space-5);min-height:var(--header-h);padding:0 var(--space-5);background:var(--color-surface);border-bottom:1px solid var(--color-line)}
+.mn-brand{display:flex;align-items:baseline;gap:var(--space-2);font:500 1.35rem/1 var(--font-display);letter-spacing:-.01em;color:var(--color-ink);text-decoration:none}
+.mn-brand b{font-weight:500;font-style:italic;color:var(--color-accent)}
+.mn-nav{display:flex;gap:var(--space-1);margin-left:auto}
+.mn-nav a{position:relative;padding:var(--space-2) var(--space-3);font:500 var(--text-sm)/1 var(--font-ui);color:var(--color-ink-2);text-decoration:none;transition:color var(--dur-fast) var(--ease)}
+.mn-nav a:hover{color:var(--color-ink)}
+.mn-nav a[aria-current="page"]{color:var(--color-ink)}
+.mn-nav a[aria-current="page"]::after{content:"";position:absolute;left:var(--space-3);right:var(--space-3);bottom:-.95rem;height:2px;background:var(--color-accent)}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.mn-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:2.5rem;padding:0 var(--space-4);border:1px solid var(--color-line-strong);border-radius:var(--radius-sm);background:transparent;color:var(--color-ink);font:500 var(--text-sm)/1 var(--font-ui);cursor:pointer;text-decoration:none;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+.mn-btn:hover{background:var(--color-sunken)}
+.mn-btn:active{transform:translateY(1px)}
+.mn-btn[disabled],.mn-btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;transform:none}
+.mn-btn svg{width:1rem;height:1rem;flex:none}
+.mn-btn--primary{background:var(--color-accent);border-color:var(--color-accent);color:var(--color-on-accent)}
+.mn-btn--primary:hover{background:var(--color-accent-hover);border-color:var(--color-accent-hover)}
+.mn-btn--quiet{border-color:transparent;color:var(--color-ink-2)}
+.mn-btn--quiet:hover{color:var(--color-ink)}
+.mn-btn--danger{color:var(--color-danger);border-color:var(--color-danger)}
+.mn-btn--danger:hover{background:var(--color-danger-soft)}
+.mn-btn--sm{min-height:2rem;padding:0 var(--space-3)}
+.mn-btn--icon{width:2.5rem;padding:0}
+.mn-btn--icon.mn-btn--sm{width:2rem}
+
+/* ==========================================================================
+   Fields — underline-ish: full hairline box, label above in small caps style
+   ========================================================================== */
+.mn-field{display:grid;gap:var(--space-1)}
+.mn-label{font:600 var(--text-xs)/1.2 var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--color-ink-2)}
+.mn-label .mn-req{color:var(--color-accent)}
+.mn-input,.mn-select,.mn-textarea{width:100%;min-height:2.5rem;padding:.55rem var(--space-3);background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-line-strong);border-radius:var(--radius-sm);font:400 var(--text-base)/1.35 var(--font-ui);transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease)}
+.mn-textarea{min-height:6rem;resize:vertical}
+.mn-input::placeholder,.mn-textarea::placeholder{color:var(--color-ink-3)}
+.mn-input:hover,.mn-select:hover,.mn-textarea:hover{border-color:var(--color-ink-2)}
+.mn-input:focus,.mn-select:focus,.mn-textarea:focus{outline:none;border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-accent-soft),0 0 0 4px var(--color-accent)}
+.mn-input[aria-invalid="true"]{border-color:var(--color-danger)}
+.mn-help{font-size:var(--text-sm);color:var(--color-ink-2)}
+.mn-error{font-size:var(--text-sm);color:var(--color-danger);display:flex;gap:var(--space-1);align-items:center}
+.mn-check{display:inline-flex;gap:var(--space-2);align-items:center;font-size:var(--text-base);cursor:pointer}
+.mn-check input{appearance:none;width:1.125rem;height:1.125rem;margin:0;border:1.5px solid var(--color-line-strong);border-radius:var(--radius-xs);background:var(--color-surface);display:grid;place-content:center;cursor:pointer}
+.mn-check input::after{content:"";width:.6rem;height:.35rem;border-left:2px solid var(--color-on-accent);border-bottom:2px solid var(--color-on-accent);transform:rotate(-45deg) translate(1px,-1px) scale(0);transition:transform var(--dur-fast) var(--ease)}
+.mn-check input:checked{background:var(--color-accent);border-color:var(--color-accent)}
+.mn-check input:checked::after{transform:rotate(-45deg) translate(1px,-1px) scale(1)}
+.mn-check input:indeterminate{background:var(--color-accent);border-color:var(--color-accent)}
+.mn-check input:indeterminate::after{width:.55rem;height:0;border-left:0;border-bottom:2px solid var(--color-on-accent);transform:none}
+
+/* ==========================================================================
+   Cards  (flat, hairline; "repeatable item" gets a left ink rule)
+   ========================================================================== */
+.mn-card{background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-1)}
+.mn-card--item{border-left:3px solid var(--color-accent);border-radius:var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-xs)}
+.mn-card--select{cursor:pointer;transition:border-color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.mn-card--select:hover{border-color:var(--color-line-strong)}
+.mn-card--select[aria-selected="true"]{border-color:var(--color-accent);background:var(--color-accent-soft)}
+.mn-card__head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-4)}
+
+/* ==========================================================================
+   Chips, badges, file chips
+   ========================================================================== */
+.mn-chip{display:inline-flex;align-items:center;gap:var(--space-2);min-height:1.75rem;padding:0 var(--space-3);border:1px solid var(--color-line-strong);border-radius:var(--radius-pill);font:500 var(--text-sm)/1 var(--font-ui);color:var(--color-ink);background:var(--color-surface)}
+.mn-chip svg{width:.9rem;height:.9rem;color:var(--color-ink-2)}
+.mn-chip button{all:unset;cursor:pointer;display:grid;place-content:center;width:1.1rem;height:1.1rem;border-radius:50%;color:var(--color-ink-2)}
+.mn-chip button:hover{background:var(--color-sunken);color:var(--color-ink)}
+.mn-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;border-radius:var(--radius-xs);font:600 var(--text-xs)/1.2 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;background:var(--color-sunken);color:var(--color-ink-2)}
+.mn-badge::before{content:"";width:.4rem;height:.4rem;border-radius:50%;background:currentColor}
+.mn-badge--ok{background:var(--color-accent-soft);color:var(--color-accent)}
+.mn-badge--warn{background:var(--color-warn-soft);color:var(--color-warn)}
+.mn-badge--danger{background:var(--color-danger-soft);color:var(--color-danger)}
+.mn-badge--ok::before{content:none}
+
+/* Upload slot (certificates) */
+.mn-slot{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;padding:var(--space-3) var(--space-4);border:1px dashed var(--color-line-strong);border-radius:var(--radius-sm);background:transparent;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+.mn-slot:hover,.mn-slot[data-drag]{background:var(--color-accent-soft);border-color:var(--color-accent)}
+.mn-slot--filled{border-style:solid;border-color:var(--color-line);background:var(--color-surface)}
+
+/* ==========================================================================
+   Section nav (Perfil) + tabs
+   ========================================================================== */
+.mn-sidenav{display:grid;gap:0;position:sticky;top:var(--space-5);counter-reset:sec}
+.mn-sidenav a{counter-increment:sec;display:flex;gap:var(--space-3);align-items:baseline;padding:var(--space-2) 0 var(--space-2) var(--space-3);border-left:1px solid var(--color-line);color:var(--color-ink-2);text-decoration:none;font-size:var(--text-sm)}
+.mn-sidenav a::before{content:counter(sec,decimal-leading-zero);font:italic 400 var(--text-sm)/1 var(--font-display);color:var(--color-ink-3);min-width:1.4rem}
+.mn-sidenav a:hover{color:var(--color-ink)}
+.mn-sidenav a[aria-current="true"]{color:var(--color-ink);font-weight:600;border-left:2px solid var(--color-accent);padding-left:calc(var(--space-3) - 1px)}
+.mn-sidenav a[aria-current="true"]::before{color:var(--color-accent)}
+.mn-tabs{display:flex;gap:var(--space-5);border-bottom:1px solid var(--color-line)}
+.mn-tabs [role="tab"]{all:unset;cursor:pointer;padding:var(--space-2) 0 var(--space-3);font:500 var(--text-sm)/1 var(--font-ui);color:var(--color-ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.mn-tabs [role="tab"]:hover{color:var(--color-ink)}
+.mn-tabs [role="tab"][aria-selected="true"]{color:var(--color-ink);border-bottom-color:var(--color-accent)}
+.mn-tabs [role="tab"]:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+
+/* ==========================================================================
+   Progress  (thin ink line; the "sello" marks completion)
+   ========================================================================== */
+.mn-progress{height:4px;background:var(--color-line);border-radius:var(--radius-pill);overflow:hidden}
+.mn-progress>i{display:block;height:100%;width:var(--value,0%);background:var(--color-accent);border-radius:inherit;transition:width var(--dur-slow) var(--ease)}
+.mn-stamp{display:inline-grid;place-content:center;width:3.25rem;height:3.25rem;border-radius:50%;border:1.5px solid var(--color-accent);outline:1px solid var(--color-accent);outline-offset:3px;color:var(--color-accent);font:italic 500 1.05rem/1 var(--font-display);transform:rotate(-8deg)}
+
+/* Checklist row (Documentos) */
+.mn-doc{display:grid;grid-template-columns:2rem 1fr auto;gap:var(--space-4);align-items:center;padding:var(--space-4) 0;border-bottom:1px solid var(--color-line)}
+.mn-doc:last-child{border-bottom:0}
+.mn-doc__mark{width:1.5rem;height:1.5rem;border-radius:50%;border:1.5px solid var(--color-line-strong);display:grid;place-content:center;color:var(--color-on-accent)}
+.mn-doc[data-state="done"] .mn-doc__mark{background:var(--color-accent);border-color:var(--color-accent)}
+.mn-doc__title{font:500 var(--text-md)/1.25 var(--font-display)}
+.mn-doc__meta{font-size:var(--text-sm);color:var(--color-ink-2)}
+
+/* ==========================================================================
+   Dialog, toast, empty state
+   ========================================================================== */
+.mn-scrim{position:fixed;inset:0;background:var(--color-scrim);display:grid;place-items:center;padding:var(--space-5)}
+.mn-dialog{width:min(36rem,100%);background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-lg);box-shadow:var(--shadow-overlay);animation:mn-rise var(--dur-base) var(--ease)}
+.mn-dialog__head{display:flex;align-items:baseline;justify-content:space-between;padding:var(--space-5) var(--space-5) var(--space-3)}
+.mn-dialog__body{padding:var(--space-3) var(--space-5) var(--space-5)}
+.mn-dialog__foot{display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-line);background:var(--color-bg);border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+@keyframes mn-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.mn-toast{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--color-ink);color:var(--color-bg);border-radius:var(--radius-sm);font-size:var(--text-sm);box-shadow:var(--shadow-overlay)}
+.mn-toast svg{width:1rem;height:1rem;color:var(--color-accent-soft)}
+.mn-empty{display:grid;justify-items:center;gap:var(--space-3);text-align:center;padding:var(--space-7) var(--space-5);border:1px dashed var(--color-line-strong);border-radius:var(--radius-md);color:var(--color-ink-2)}
+.mn-empty h3{font-size:var(--text-lg);color:var(--color-ink)}
+.mn-empty p{margin:0;max-width:34ch}
+
+/* Slider (photo editor) */
+.mn-range{appearance:none;width:100%;height:4px;border-radius:var(--radius-pill);background:var(--color-line);outline-offset:6px}
+.mn-range::-webkit-slider-thumb{appearance:none;width:1rem;height:1rem;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-surface);box-shadow:0 0 0 1px var(--color-accent)}
+.mn-range::-moz-range-thumb{width:1rem;height:1rem;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-surface)}
+.mn-crop{position:relative;aspect-ratio:3/4;background:var(--color-sunken);border-radius:var(--radius-sm);overflow:hidden}
+.mn-crop::after{content:"";position:absolute;inset:8%;border:1.5px solid #fff;box-shadow:0 0 0 999px rgba(0,0,0,.45);background:linear-gradient(#fff6 1px,transparent 1px) 0 33%/100% 33.3%,linear-gradient(90deg,#fff6 1px,transparent 1px) 33%/33.3% 100%}
+
+/* ==========================================================================
+   Vista previa: canvas + paper
+   ========================================================================== */
+.mn-toolbar{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-md)}
+.mn-canvas{background:var(--color-sunken);padding:var(--space-6);display:grid;justify-items:center;gap:var(--space-5)}
+.mn-page{width:210mm;max-width:100%;aspect-ratio:210/297;background:var(--color-paper);color:var(--color-paper-ink);box-shadow:var(--shadow-paper);padding:16mm 16mm;font-family:var(--font-display)}
+
+/* ==========================================================================
+   Printed HV — print.css reference (class names are indicative; copy rules).
+   Rules: black on white, no backgrounds, no images except the photo,
+   single column text flow (ATS-safe), real text, real headings.
+   ========================================================================== */
+.hv-doc{font:400 10.5pt/1.4 var(--font-display);color:#111;font-variant-numeric:lining-nums}
+.hv-doc h1{font:600 22pt/1.05 var(--font-display);letter-spacing:-.01em;margin:0}
+.hv-doc .hv-sub{font:400 10pt/1.3 var(--font-ui);color:#333;letter-spacing:.02em}
+.hv-doc h2{font:600 8.5pt/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;margin:14pt 0 6pt;padding-bottom:3pt;border-bottom:.75pt solid #111;break-after:avoid}
+.hv-doc .hv-item{break-inside:avoid;margin:0 0 7pt}
+.hv-doc .hv-item__t{font-weight:600}
+.hv-doc .hv-item__d{float:right;font:400 9pt var(--font-ui);color:#333}
+@media print{
+  @page{size:A4;margin:14mm 16mm}
+  .hv-doc,.hv-doc *{background:none!important;box-shadow:none!important;color:#111!important}
+  .hv-doc a{text-decoration:none}
+}

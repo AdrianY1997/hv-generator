@@ -1,0 +1,13 @@
+* text=auto
+
+# Binarios: sin conversion de fin de linea ni diff
+*.woff2 binary
+*.woff binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+
+# Codigo vendorizado y generado: nunca se toca (byte a byte) ni se diffea
+app/vendor/** -text -diff
+app/js/models/minerva-layout.js -text

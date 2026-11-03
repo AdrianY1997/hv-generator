@@ -1,0 +1,23 @@
+{
+  "name": "hv-minerva-tests-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pruebas de extremo a extremo y de accesibilidad de HV Minerva. Solo desarrollo: no se despliega y la app no depende de nada de esto.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test \"../app/tests/*.test.mjs\"",
+    "test:e2e": "node run-e2e.mjs",
+    "test:e2e:chromium": "node run-e2e.mjs --only chromium",
+    "test:cross": "node run-e2e.mjs --only cross",
+    "clean": "node -e \"for (const d of ['test-results','out','playwright-report']) require('fs').rmSync(d,{recursive:true,force:true})\"",
+    "a11y": "playwright test --project=chromium --grep @a11y",
+    "test:e2e:core": "playwright test --project=chromium --grep-invert @a11y",
+    "test:print": "playwright test print.spec.mjs --workers=1",
+    "browsers": "playwright install chromium firefox webkit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
+    "@playwright/test": "1.64.1"
+  }
+}
