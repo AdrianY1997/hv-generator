@@ -72,6 +72,22 @@ function mergeSimple(cur, inc, prefer, st) {
   return out;
 }
 
+/**
+ * Un registro con el mismo id en los dos lados gana ENTERO (el más reciente), pero no pierde campos que el otro tenía y a él le faltan del todo
+ * (clave ausente, no vacía): p. ej. una versión anterior de la app no conoce `cargoJefe` y su copia del registro solo trae `cargo`
+ * (docs/SYNC.md, «Versiones distintas»). Un valor vacío del ganador cuenta como dato (borrado a propósito): no se rellena. Idempotente.
+ */
+export function fillAbsent(win, lose) {
+  if (!isPlainObject(win) || !isPlainObject(lose)) return win;
+  let out = win;
+  for (const [k, v] of Object.entries(lose)) {
+    if (isReservedKey(k) || k === 'id' || Object.hasOwn(win, k) || isEmptyValue(v)) continue;
+    if (out === win) out = { ...win };
+    out[k] = v;
+  }
+  return out;
+}
+
 /** Sección repetible: agrega ids nuevos; con id repetido gana el más reciente (updatedAt) o el respaldo con `prefer`. */
 function mergeRepeatable(cur, inc, prefer, st) {
   const out = [], idx = new Map();
@@ -90,7 +106,8 @@ function mergeRepeatable(cur, inc, prefer, st) {
     const i = idx.get(it.id), c = out[i];
     if (canon(c) === canon(it)) { st.itemsSame++; continue; }
     const tc = stamp(c.updatedAt), ti = stamp(it.updatedAt);
-    if (prefer || (tc !== null && ti !== null && ti > tc)) { out[i] = it; st.itemsReplaced++; } else st.itemsKept++;
+    if (prefer || (tc !== null && ti !== null && ti > tc)) { out[i] = fillAbsent(it, c); st.itemsReplaced++; }
+    else { const f = fillAbsent(c, it); if (f !== c) { out[i] = f; st.filled++; } st.itemsKept++; }
   }
   return out;
 }

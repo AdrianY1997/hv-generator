@@ -2,7 +2,8 @@
 import { normalizeProfile, normalizeTemplates } from './backup-validate.js';
 import { prepareBackup, mergeBackup } from './backup-merge.js';
 import { migrate as migrateProfile, CURRENT_VERSION } from './migrate.js';
-const K_PROFILE = 'hv.profile', K_TEMPLATES = 'hv.templates', K_VERSION = 'hv.version', K_BACKUP = 'hv.lastBackup';
+import { stampProfile, stampTemplates, stampFiles, sanitizeClock, canon } from './sync/clock.js';
+const K_PROFILE = 'hv.profile', K_TEMPLATES = 'hv.templates', K_VERSION = 'hv.version', K_BACKUP = 'hv.lastBackup', K_CLOCK = 'hv.sync.clock';
 const DB_NAME = 'hv', STORE = 'files';
 const listeners = new Set();
 
@@ -40,14 +41,21 @@ function writeJSON(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { throw storageFail(e); }
 }
 
+// ---- Reloj de cambios para la sincronización (G04, js/sync/clock.js): qué cambió y cuándo (campo, registro, plantilla, archivo, borrados).
+// Se mantiene siempre (es pequeño) para que una edición hecha con la sincronización desconectada también cuente como más reciente.
+// Nunca hace fallar un guardado: si no se puede escribir, se avisa en consola y la fusión trata esos cambios como "sin fecha".
+export const getSyncClock = () => sanitizeClock(readJSON(K_CLOCK, {}));
+export function setSyncClock(c) { try { localStorage.setItem(K_CLOCK, JSON.stringify(c)); } catch (e) { console.warn('hv.sync.clock', e?.name); } }
+function stamp(fn) { try { setSyncClock(fn(getSyncClock())); } catch (e) { console.warn('hv.sync.clock', e?.name); } }
+
 // ---- Perfil (un solo aspirante). Forma libre; la define el schema del modelo.
 export const getProfile = () => normalizeProfile(readJSON(K_PROFILE, {}));
-export function setProfile(p) { writeJSON(K_PROFILE, p); emit('profile'); }
+export function setProfile(p) { const prev = readJSON(K_PROFILE, {}); writeJSON(K_PROFILE, p); stamp((c) => stampProfile(prev, p, c)); emit('profile'); }
 export function updateProfile(patch) { setProfile({ ...getProfile(), ...patch }); }
 
 // ---- Plantillas
 export const getTemplates = () => normalizeTemplates(readJSON(K_TEMPLATES, []));
-export function setTemplates(list) { writeJSON(K_TEMPLATES, list); emit('templates'); }
+export function setTemplates(list) { const prev = readJSON(K_TEMPLATES, []); writeJSON(K_TEMPLATES, list); stamp((c) => stampTemplates(prev, list, c)); emit('templates'); }
 export function saveTemplate(t) {
   const list = getTemplates();
   const i = list.findIndex((x) => x.id === t.id);
@@ -92,6 +100,7 @@ async function tx(mode, fn) {
 /** putFile(id, blob, meta={}) guarda {id, blob, meta{name,type,size,...}} */
 export async function putFile(id, blob, meta = {}) {
   await tx('readwrite', (s) => s.put({ id, blob, meta: { name: blob.name, type: blob.type, size: blob.size, ...meta } }));
+  stamp((c) => stampFiles(c, { put: [id] }));
   emit('files');
 }
 /** updateFileMeta(id, patch): fusiona `patch` en el meta sin tocar el blob (las claves con valor null se eliminan). */
@@ -101,12 +110,13 @@ export async function updateFileMeta(id, patch) {
   const meta = { ...rec.meta, ...patch };
   for (const k of Object.keys(meta)) if (meta[k] === null) delete meta[k];
   await tx('readwrite', (s) => s.put({ id, blob: rec.blob, meta }));
+  stamp((c) => stampFiles(c, { put: [id] }));
   emit('files');
   return meta;
 }
 /** getFile(id) -> {id, blob, meta} | undefined */
 export const getFile = (id) => tx('readonly', (s) => s.get(id));
-export async function deleteFile(id) { await tx('readwrite', (s) => s.delete(id)); emit('files'); }
+export async function deleteFile(id) { await tx('readwrite', (s) => s.delete(id)); stamp((c) => stampFiles(c, { del: [id] })); emit('files'); }
 /** listFiles() -> [{id, meta}] */
 export async function listFiles() {
   const all = await tx('readonly', (s) => s.getAll());
@@ -152,6 +162,7 @@ export async function importBackup(data, opts = {}) {
   if (data && typeof data === 'object' && data.format === 'hv-minerva-enc') throw Object.assign(new Error('encrypted'), { userMessage: 'Este respaldo está cifrado con contraseña: hay que descifrarlo antes de importarlo. Tus datos actuales no se modificaron.' });
   // Al fusionar, los renombrados de la migración del respaldo no pueden reutilizar ids que ya existen en IndexedDB.
   const existing = mode === 'merge' ? await listFiles() : [];
+  const before = mode === 'merge' ? existing : await listFiles().catch(() => []); // para fechar en el reloj de sincronización lo que se reemplaza
   const v = prepareBackup(data, { takenIds: existing.map((f) => f.id) });
   if (!v.ok) throw Object.assign(new Error(v.error), { userMessage: v.error });
   const records = v.files.map((f) => ({ id: f.id, blob: new Blob([f.bytes], { type: f.type }), meta: f.meta }));
@@ -194,8 +205,69 @@ export async function importBackup(data, opts = {}) {
     if (isQuotaError(e)) storageFail(e);
     throw Object.assign(new Error('import-failed'), { userMessage: isQuotaError(e) ? 'No se pudo importar el respaldo: el almacenamiento está lleno. Tus datos actuales no se modificaron.' : 'No se pudo importar el respaldo. Tus datos actuales no se modificaron.' });
   }
+  // Importar es una edición más para la sincronización: lo que cambió gana en la próxima fusión (y lo que "Reemplazar todo" quitó se borra).
+  stamp((c) => {
+    let pPrev = {}, tPrev = [];
+    try { pPrev = prev.p ? JSON.parse(prev.p) : {}; tPrev = prev.t ? JSON.parse(prev.t) : []; } catch { /* sin anterior */ }
+    const putIds = puts.map((r) => r.id), keep = new Set(putIds);
+    const del = clear ? before.map((f) => f.id).filter((id) => !keep.has(id)) : [];
+    return stampFiles(stampTemplates(tPrev, templates, stampProfile(pPrev, profile, c)), { put: putIds, del });
+  });
   emit('all');
   return { mode, changed: true, files: puts.length, templates: templates.length, stats };
+}
+
+// ---- Sincronización (G04): escritura del resultado de una fusión (js/sync/local-store.js). No fecha nada: el reloj ya viene fusionado.
+/**
+ * applySync({ base, profile, templates, clock, puts:[{id, bytes|null, meta}], dels:[ids] })
+ * Igual de atómico que importBackup: localStorage con reversión y UNA transacción IndexedDB (puts + borrados); un solo evento 'all'.
+ * `base` = lo que leyó el motor: si el perfil, las plantillas o los archivos cambiaron desde entonces (la persona editó mientras se
+ * sincronizaba), no se escribe nada y se lanza code 'local-changed' para que el motor vuelva a empezar sin pisar ese cambio.
+ * `bytes: null` = mismo contenido, solo cambian los metadatos (se reutiliza el blob actual).
+ */
+export async function applySync({ base, profile, templates, clock, puts = [], dels = [] }) {
+  const changed = () => Object.assign(new Error('local-changed'), { code: 'local-changed', userMessage: 'Tus datos cambiaron mientras se sincronizaba; se vuelve a intentar.' });
+  const sig = (list) => list.map((f) => `${f.id}:${f.meta?.size}:${f.meta?.name}`).sort().join('|');
+  if (base) {
+    if (canon(getProfile()) !== canon(base.profile) || canon(getTemplates()) !== canon(base.templates)) throw changed();
+    if (base.clock && canon(getSyncClock()) !== canon(base.clock)) throw changed(); // un sello nuevo del reloj (edición durante la red) no se pisa
+    if (sig(await listFiles()) !== sig(base.files)) throw changed();
+  }
+  const records = [];
+  for (const p of puts) {
+    let blob;
+    if (p.bytes) blob = new Blob([p.bytes], { type: p.meta.type });
+    else { const cur = await getFile(p.id); if (!cur) continue; blob = cur.blob; }
+    records.push({ id: p.id, blob, meta: { ...p.meta, size: blob.size } });
+  }
+  const prev = { p: localStorage.getItem(K_PROFILE), t: localStorage.getItem(K_TEMPLATES), c: localStorage.getItem(K_CLOCK), v: localStorage.getItem(K_VERSION) };
+  const restore = () => {
+    for (const [k, v] of [[K_PROFILE, prev.p], [K_TEMPLATES, prev.t], [K_CLOCK, prev.c], [K_VERSION, prev.v]]) {
+      try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { console.error(e); }
+    }
+  };
+  try {
+    writeJSON(K_PROFILE, profile);
+    writeJSON(K_TEMPLATES, templates);
+    writeJSON(K_CLOCK, clock);
+    writeJSON(K_VERSION, CURRENT_VERSION);
+    if (records.length || dels.length) {
+      const d = await db();
+      await new Promise((res, rej) => {
+        const t = d.transaction(STORE, 'readwrite');
+        const s = t.objectStore(STORE);
+        for (const r of records) s.put(r);
+        for (const id of dels) s.delete(id);
+        t.oncomplete = () => res();
+        t.onabort = () => rej(t.error || new Error('Transacción cancelada'));
+      });
+    }
+  } catch (e) {
+    restore();
+    if (isQuotaError(e)) storageFail(e);
+    throw Object.assign(new Error('sync-apply-failed'), { code: isQuotaError(e) ? 'quota' : 'write', userMessage: isQuotaError(e) ? 'No se pudieron guardar los cambios recibidos: el almacenamiento de este navegador está lleno. Tus datos no se modificaron.' : 'No se pudieron guardar los cambios recibidos. Tus datos no se modificaron.' });
+  }
+  emit('all');
 }
 
 // ---- Migración de datos (G15) ----
@@ -273,27 +345,43 @@ export async function requestPersist() {
 export async function deleteFiles(ids) {
   if (!ids.length) return 0;
   await tx('readwrite', (s) => { for (const id of ids) s.delete(id); });
+  stamp((c) => stampFiles(c, { del: ids }));
   emit('files');
   return ids.length;
 }
 
 // ---- Borrar todos mis datos (G05) ----
-/** wipeAll(): borra localStorage `hv.*` (también sessionStorage), el contenido de IndexedDB `hv` y la base. No toca cachés de la app (código público). */
-export async function wipeAll() {
-  for (const st of [localStorage, sessionStorage]) {
-    try { for (const k of Object.keys(st)) if (k.startsWith('hv.')) st.removeItem(k); } catch (e) { console.error(e); }
+/**
+ * wipeAll(): borra localStorage `hv.*` (también sessionStorage) PRIMERO (así nada vuelve a abrir las bases ni programa una sincronización),
+ * luego el contenido y la base de IndexedDB `hv` y la base `hv-sync` (configuración de sincronización: token envuelto, claves recordadas,
+ * estado, copia previa). El borrado de cada base es VERIFICADO (sync-db.js wipeDatabase: espera si está bloqueada y, si no se puede
+ * borrar, vacía cada almacén). No toca cachés de la app (código público) ni la copia remota (Gist/carpeta).
+ * -> { ok, remaining: [textos en español de lo que NO se pudo borrar] }. `io` se puede inyectar (pruebas): { storages, idb, wipeDb }.
+ */
+export async function wipeAll(io = {}) {
+  const remaining = [];
+  const storages = io.storages || [localStorage, sessionStorage];
+  const LS = 'preferencias y datos del perfil guardados en el navegador';
+  for (const st of storages) {
+    try {
+      for (const k of Object.keys(st)) if (k.startsWith('hv.')) st.removeItem(k);
+      if (Object.keys(st).some((k) => k.startsWith('hv.'))) remaining.push(LS);
+    } catch (e) { console.error(e); remaining.push(LS); }
   }
-  let failed = false;
-  try { await tx('readwrite', (s) => s.clear()); } catch (e) { console.error(e); failed = true; }
+  const sdbMod = io.wipeDb ? null : await import('./sync/sync-db.js').catch(() => null);
+  const wipeDb = io.wipeDb || sdbMod?.wipeDatabase;
+  const opts = io.idb ? { idb: io.idb } : undefined;
+  try { if (!io.wipeDb) await tx('readwrite', (s) => s.clear()); } catch (e) { console.error(e); }
   try {
     const d = dbp ? await dbp.catch(() => null) : null;
     d?.close(); dbp = null;
-    await new Promise((res) => {
-      const r = indexedDB.deleteDatabase(DB_NAME);
-      r.onsuccess = r.onerror = r.onblocked = () => res();
-      setTimeout(res, 1500);
-    });
-  } catch (e) { console.error(e); }
+    const r = wipeDb ? await wipeDb(DB_NAME, opts) : { ok: false };
+    if (!r?.ok) remaining.push('archivos (fotografía, certificados y documentos)');
+  } catch (e) { console.error(e); remaining.push('archivos (fotografía, certificados y documentos)'); }
+  try {
+    const r = io.wipeDb ? await io.wipeDb('hv-sync', opts) : await sdbMod.deleteSyncDb();
+    if (!r?.ok) remaining.push('configuración de sincronización (token cifrado, claves y copia previa)');
+  } catch (e) { console.error(e); remaining.push('configuración de sincronización (token cifrado, claves y copia previa)'); }
   emit('all');
-  return !failed;
+  return { ok: remaining.length === 0, remaining: [...new Set(remaining)] };
 }

@@ -1,8 +1,9 @@
 // Migración PURA del perfil (sin DOM ni IndexedDB). La aplica store.js al cargar y al importar un respaldo.
 // Versión 0 = sin versión (datos de la app antes de G15). CURRENT = forma actual.
 // Idempotente: aplicarla a un perfil ya migrado no cambia nada (changed=false).
+import { LEGACY_DEFAULT_SHOWN } from './doc-sources.js';
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 /** Clave de metadatos del perfil (junto a `documents` y `documentsShown`): `true` = el perfil es anterior a las condiciones de visibilidad (ver conditions.js). */
 export const LEGACY_KEY = 'legacyConditions';
@@ -82,7 +83,23 @@ function toV2(profile) {
   return { profile: { ...profile, [LEGACY_KEY]: true }, renames: {}, dropped: [] };
 }
 
-const STEPS = [{ to: 1, run: toV1 }, { to: 2, run: toV2 }];
+/**
+ * Migración 2 -> 3 (conjunto de documentos visible por defecto, verificación legal de nov. 2026): el conjunto por defecto cambió (se quitaron
+ * RNMC e Inhabilidades, entraron EPS y pensión). Un perfil EXISTENTE sin `documentsShown` veía el conjunto anterior (LEGACY_DEFAULT_SHOWN) más
+ * los documentos con archivos; se materializa esa lista para que no cambie lo que ve ni desaparezca un documento al borrar su último archivo.
+ * Un perfil nuevo o vacío (sin datos ni archivos) NO la recibe: queda sin la clave y usa el conjunto nuevo. Una lista propia se respeta tal cual.
+ */
+function toV3(profile) {
+  const out = { ...profile };
+  if (Array.isArray(out.documentsShown)) return { profile: out, renames: {}, dropped: [] };
+  const docs = isObj(out.documents) ? out.documents : {};
+  const withFiles = Object.keys(docs).filter((id) => !RESERVED.has(id) && Array.isArray(docs[id]) && docs[id].some((x) => typeof x === 'string'));
+  if (!profileHasContent(out) && !withFiles.length) return { profile: out, renames: {}, dropped: [] };
+  out.documentsShown = [...new Set([...LEGACY_DEFAULT_SHOWN, ...withFiles])];
+  return { profile: out, renames: {}, dropped: [] };
+}
+
+const STEPS = [{ to: 1, run: toV1 }, { to: 2, run: toV2 }, { to: 3, run: toV3 }];
 
 /**
  * migrate(profile, {from=0, fileIds=null, genId}) -> { profile, version, changed, renames, dropped }

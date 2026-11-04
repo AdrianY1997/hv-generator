@@ -35,7 +35,8 @@ test('el PDF impreso expone valores como texto y los títulos de sección una so
 test.describe('paquete PDF: capa de texto invisible', () => {
   const profile = () => {
     const p = fullProfile();
-    Object.assign(p.experiencia[0], { empresa: 'Industrias Ñandú S.A.S.', cargo: 'Coordinadora de Logística' });
+    // La casilla «Cargo» de Minerva es la del jefe (`cargoJefe`); `cargo` (Formato Único) no se imprime aquí si aquel está lleno.
+    Object.assign(p.experiencia[0], { empresa: 'Industrias Ñandú S.A.S.', cargo: 'Cargo del Formato Único', cargoJefe: 'Coordinadora de Logística' });
     return p;
   };
   const tpl = template('ATS');

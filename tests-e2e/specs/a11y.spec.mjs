@@ -70,6 +70,14 @@ test.describe('axe @a11y', () => {
         await page.reload();
         await expect(page.locator('li.doc[data-doc="cedula"] .file-name')).toBeVisible();
         await audit(page, `documentos con archivos (${theme})`);
+        await expect(page.getByRole('note', { name: /no es asesoría jurídica/ })).toBeVisible(); // descargo y avisos «no exigible» incluidos en la auditoría
+        await expect(page.locator('li.doc [data-employer="no"]').first()).toBeVisible();
+        await page.getByRole('button', { name: 'Añadir documento' }).first().click();
+        await page.getByRole('dialog', { name: 'Documentos de tu lista' }).getByRole('button', { name: 'Todos' }).click();
+        await page.getByRole('dialog', { name: 'Documentos de tu lista' }).getByRole('button', { name: 'Listo' }).click();
+        await expect(page.locator('li.doc')).toHaveCount(20);
+        await page.evaluate(() => document.querySelectorAll('li.doc details, .doc-disclaimer details').forEach((d) => { d.open = true; }));
+        await audit(page, `documentos: los 20, con «Base legal», «Cómo obtenerlo» y descargo abiertos (${theme})`);
         await page.getByRole('button', { name: 'Añadir documento' }).first().click();
         await expect(page.getByRole('dialog', { name: 'Documentos de tu lista' })).toBeVisible();
         await audit(page, `selector de documentos (${theme})`);

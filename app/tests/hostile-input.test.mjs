@@ -79,7 +79,7 @@ test('claves reservadas del perfil (__proto__, constructor, prototype) se descar
   const dirty = JSON.parse('{"__proto__":{"x":1},"constructor":{"y":1},"prototype":"z","personales":{"nombres":"A","constructor":"c","__proto__":{"p":1}},"documents":{"constructor":["doc:c"],"rut":["doc:rut"]}}');
   const v = prepareBackup(backup({ profile: dirty }));
   assert.equal(v.ok, true);
-  assert.deepEqual(Object.keys(v.profile).sort(), ['documents', 'legacyConditions', 'personales']); // sin schemaVersion = perfil anterior a las condiciones
+  assert.deepEqual(Object.keys(v.profile).sort(), ['documents', 'documentsShown', 'legacyConditions', 'personales']); // sin schemaVersion = perfil anterior a las condiciones y al nuevo conjunto por defecto (se materializa la lista que veía)
   assert.deepEqual(Object.keys(v.profile.documents), ['rut']);
   const m = mergeBackup({ profile: { personales: { nombres: '' } }, templates: [], files: [{ id: 'doc:rut' }] }, { profile: dirty, templates: [], files: [] });
   assert.equal(m.ok, true);
@@ -107,4 +107,16 @@ test('prepareBackup con takenIds: el renombrado legacy no pisa un archivo existe
   const r = prepareBackup(backup({ schemaVersion: 0, profile: { documents: { rut: ['doc:rut:1'] } }, files: [pdfFile('doc:rut:1')] }), { takenIds: ['doc:rut'] });
   assert.equal(r.files[0].id, 'doc:rut:2');
   assert.deepEqual(r.profile.documents.rut, ['doc:rut:2']);
+});
+
+test('quietDestroy no espera a un destroy() colgado ni propaga rechazos (worker de pdf.js atascado)', async () => {
+  const { quietDestroy } = await import('../js/pdf-ingest.js');
+  const t0 = Date.now();
+  quietDestroy({ destroy: () => new Promise(() => {}) }); // nunca resuelve
+  quietDestroy({ destroy: () => Promise.reject(new Error('x')) });
+  quietDestroy({ destroy: () => { throw new Error('sync'); } });
+  quietDestroy(null);
+  quietDestroy({});
+  assert.ok(Date.now() - t0 < 100);
+  await new Promise((r) => setTimeout(r, 10)); // un rechazo sin manejar haría fallar el proceso de pruebas
 });

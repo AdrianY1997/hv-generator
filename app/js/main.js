@@ -66,3 +66,11 @@ try { await Promise.race([store.migrate(), new Promise((r) => setTimeout(r, 5000
 initNotices({ store });
 router.start();
 registerSW();
+// G04: sincronización automática entre equipos (solo si se configuró en Ajustes; módulos con carga perezosa).
+try {
+  if (localStorage.getItem('hv.sync.on') === '1') {
+    Promise.all([import('./sync/controller.js'), import('./ui.js')])
+      .then(([sync, ui]) => sync.startAutoSync({ store, toast: ui.toast }))
+      .catch((e) => console.error(e));
+  }
+} catch { /* sin almacenamiento */ }

@@ -33,7 +33,7 @@ test('exportar: el respaldo trae perfil, plantillas y archivos en base64 y marca
   await openApp(page, '/ajustes', { profile: fullProfile(), templates: [template('Mi plantilla')], files: [{ id: 'photo', name: 'f.png', type: 'image/png', data: png }, { id: 'doc:cedula', name: 'c.pdf', type: 'application/pdf', data: pdf }] });
   await expect(page.getByText('Aún no has descargado ningún respaldo')).toBeHidden(); // (el sembrado marca uno reciente)
   const data = await exportBackup(page, testInfo);
-  expect(data).toMatchObject({ app: 'hv-minerva', schemaVersion: 2 });
+  expect(data).toMatchObject({ app: 'hv-minerva', schemaVersion: 3 });
   expect(data.profile.personales.nombres).toBe('Ana María');
   expect(data.templates.map((t) => t.name)).toEqual(['Mi plantilla']);
   expect(data.files.map((f) => f.id).sort()).toEqual(['doc:cedula', 'photo']);

@@ -112,3 +112,65 @@ test('experiencia: un trabajo que empieza antes de que termine el anterior avisa
   await expect(fld(1).locator('.field-warn').filter({ hasText: /\S/ })).toHaveCount(0);
   await expect.poll(async () => (await readLS(page, 'hv.profile'))?.experiencia?.[1]?.fechaInicio).toBe('2020-06-15'); // guarda igual
 });
+
+// Reportes desde la app en vivo: el tiempo servido de cada empleo se calcula solo (y se ve al escribir), y el primer bloque de la hoja de
+// experiencia («Nombre de la última o actual empresa») lleva el trabajo actual aunque haya un registro vacío.
+test('experiencia: tiempo servido calculado en vivo; lo escrito a mano manda; el trabajo actual va en el primer bloque', async ({ page }) => {
+  await openApp(page, '/perfil', { profile: { experiencia: [
+    { id: 'e1', empresa: 'Vieja SA', cargo: 'Auxiliar', fechaInicio: '2015-01-01', fechaFin: '2017-06-30' },
+  ] } });
+  await tab(page, 'Experiencia laboral').click();
+  const items = page.locator('li.item');
+  const out = (n) => items.nth(n).locator('.svc-time output');
+  await expect(out(0)).toHaveText('2 años, 6 meses');
+  await expect(items.nth(0).locator('input[name="tiempoServido"]')).toHaveAttribute('placeholder', 'Se calculará: 2 años, 6 meses');
+  await items.nth(0).locator('input[name="fechaFin"]').fill('2015-01-20');
+  await expect(out(0)).toHaveText('menos de 1 mes');
+  await items.nth(0).locator('input[name="fechaFin"]').fill('2017-06-30');
+  await items.nth(0).locator('input[name="tiempoServido"]').fill('Dos años y medio');
+  await expect(items.nth(0).locator('.svc-time')).toContainText('Se imprimirá lo que escribiste');
+  // Un trabajo actual y un registro vacío (se pulsó «Agregar» de más).
+  await page.getByRole('button', { name: 'Agregar experiencia' }).first().click();
+  await items.nth(1).locator('input[name="empresa"]').fill('Actual SAS');
+  await items.nth(1).locator('input[name="fechaInicio"]').fill('2020-02-01');
+  await items.nth(1).locator('input[name="actual"]').check();
+  await expect(out(1)).toHaveText(/^\d+ años(, \d+ mes(es)?)?$/);
+  await page.getByRole('button', { name: 'Agregar experiencia' }).first().click();
+  await expect(items).toHaveCount(3);
+  await expect.poll(async () => (await readLS(page, 'hv.profile'))?.experiencia?.length).toBe(3);
+  await page.goto('/index.html#/vista-previa');
+  await expect(page.locator('.pv-stage .hv-sheet').first()).toBeVisible();
+  const p3 = page.locator('.pv-stage .mv-page[data-page="3"] .mv-f');
+  const texts = await p3.allTextContents();
+  expect(texts[0], 'primer bloque: el trabajo actual').toBe('Actual SAS');
+  expect(texts).toContain('Vieja SA');
+  expect(texts).toContain('Dos años y medio');
+  expect(texts.filter((x) => x === 'Actual SAS')).toHaveLength(1);
+});
+
+test('Formato Único: el tiempo servido de cada empleo se muestra calculado (informativo)', async ({ page }) => {
+  await openApp(page, '/perfil', { profile: { experiencia: [{ id: 'e1', empresa: 'Alcaldía', fechaInicio: '2019-03-01', fechaFin: '2020-02-29' }] } });
+  await page.evaluate(() => localStorage.setItem('hv.model', 'formato-unico'));
+  await page.reload();
+  await tab(page, 'Experiencia laboral').click();
+  const box = page.locator('li.item .svc-time');
+  await expect(box.locator('output')).toHaveText('1 año');
+  await expect(box).toContainText('Informativo');
+});
+
+test('experiencia: Minerva pide «Cargo de su jefe inmediato» (con el cargo anterior como respaldo) y el Formato Único «Cargo o contrato»', async ({ page }) => {
+  await openApp(page, '/perfil', { profile: { experiencia: [{ id: 'e1', empresa: 'Vieja SA', cargo: 'Auxiliar contable', fechaInicio: '2015-01-01', fechaFin: '2017-06-30' }] } });
+  await tab(page, 'Experiencia laboral').click();
+  const item = page.locator('li.item').first();
+  await expect(item.locator('input[name="cargo"]')).toHaveCount(0);
+  const boss = item.getByLabel('Cargo de su jefe inmediato');
+  await expect(boss).toHaveAttribute('placeholder', 'Se usará: Auxiliar contable (dato anterior)');
+  await expect(item.getByLabel('Cargo desempeñado por usted')).toBeVisible();
+  await boss.fill('Jefe de contabilidad');
+  await expect.poll(async () => (await readLS(page, 'hv.profile'))?.experiencia?.[0]).toMatchObject({ cargo: 'Auxiliar contable', cargoJefe: 'Jefe de contabilidad' });
+  await page.evaluate(() => localStorage.setItem('hv.model', 'formato-unico'));
+  await page.reload();
+  await tab(page, 'Experiencia laboral').click();
+  await expect(page.locator('li.item').first().getByLabel('Cargo o contrato')).toHaveValue('Auxiliar contable');
+  await expect(page.locator('li.item input[name="cargoJefe"]')).toHaveCount(0);
+});

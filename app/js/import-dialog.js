@@ -21,7 +21,7 @@ const wipePasswords = (dlg) => { for (const i of dlg.querySelectorAll('input[aut
  * Campos de contraseña accesibles: etiqueta, "Mostrar contraseña", confirmación opcional, indicador de fortaleza (texto, aria-live) y
  * la advertencia de que una contraseña perdida no se recupera. `validate()` devuelve el mensaje de error (o null) y marca aria-invalid.
  */
-function passFields(base, { confirm = true, warn = confirm, label = 'Contraseña' } = {}) {
+export function passFields(base, { confirm = true, warn = confirm, label = 'Contraseña' } = {}) {
   const pid = `${base}-pw`, cid = `${base}-pc`, sid = `${base}-ps`, wid = `${base}-pwarn`;
   const attrs = { type: 'password', class: 'mn-input', autocomplete: confirm ? 'new-password' : 'current-password', autocapitalize: 'off', spellcheck: 'false', maxlength: String(MAX_PASSPHRASE + 64) };
   const pass = h('input', { ...attrs, id: pid, 'aria-describedby': confirm ? `${sid} ${wid}` : null });

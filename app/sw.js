@@ -22,7 +22,14 @@ const MORE = [
   'js/package-plan.js', 'js/pdf-package.js',
   'js/validators.js', 'js/conditions.js', 'js/photo-spec.js', 'js/template-check.js', 'js/a11y.js',
   'js/models/index.js', 'js/models/minerva.js', 'js/models/minerva-layout.js', 'js/models/minerva-fit.js',
+  // G02: segundo modelo (~100 KB de layout con el escudo incrustado). Se importa al arrancar (registro de modelos), así que va precacheado.
+  'js/models/formato-unico.js', 'js/models/formato-unico-layout.js', 'js/models/shared-fields.js', 'js/models/layout-fit.js', 'js/models/sheet-kit.js',
   'js/views/perfil.js', 'js/views/documentos.js', 'js/views/plantillas.js', 'js/views/vista-previa.js', 'js/views/ajustes.js',
+  // G04: sincronización cifrada entre equipos (la red solo la usa el proveedor Gist hacia api.github.com, que este worker no intercepta).
+  'css/sync.css', 'js/sync/clock.js', 'js/sync/sync-crypto.js', 'js/sync/sync-format.js', 'js/sync/sync-merge.js', 'js/sync/provider.js', 'js/sync/engine.js',
+  'js/sync/gist.js', 'js/sync/folder.js', 'js/sync/sync-db.js', 'js/sync/local-store.js', 'js/sync/controller.js', 'js/sync/sync-ui.js',
+  // Tiempo servido calculado (Perfil y render) y anexos PDF convertidos a imagen para imprimir (pdf.js se sigue cargando solo al usarse).
+  'js/service-time.js', 'js/pdf-raster.js',
 ];
 const abs = (p) => new URL(p, self.registration.scope).href;
 

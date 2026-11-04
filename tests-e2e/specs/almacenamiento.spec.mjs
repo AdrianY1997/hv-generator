@@ -88,4 +88,33 @@ test.describe('borrar todos mis datos', () => {
     expect(await listFileIds(page)).toEqual([]);
     await expect(page.locator('[data-notice="privacy"]')).toBeVisible(); // vuelve el aviso de primer uso
   });
+
+  test('también vacía la base hv-sync (config con token envuelto, claves y copia previa), aunque la app tenga una conexión abierta', async ({ page }) => {
+    await openApp(page, '/ajustes', seeded);
+    await page.evaluate(async () => {
+      const sdb = await import('/js/sync/sync-db.js'); // deja abierta la conexión de la propia app
+      await sdb.set('config', { provider: 'gist', gist: { token: { c: 'envuelto' } } });
+      await sdb.set('keys', { aes: 'x' });
+      await sdb.set('snapshot', { at: 1, profile: { personales: { nombres: 'Ana' } }, files: [] });
+      localStorage.setItem('hv.sync.on', '1');
+    });
+    await page.getByRole('button', { name: 'Borrar todos mis datos' }).click();
+    const dlg = page.getByRole('dialog', { name: '¿Borrar todos tus datos?' });
+    await dlg.getByLabel(/Escribe BORRAR/).fill('BORRAR');
+    await dlg.getByRole('button', { name: 'Borrar definitivamente' }).click();
+    await expect(page).toHaveURL(/#\/perfil$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Cuéntanos quién eres' })).toBeVisible();
+    const left = await page.evaluate(() => new Promise((res) => {
+      const r = indexedDB.open('hv-sync');
+      r.onsuccess = () => {
+        const d = r.result;
+        const names = [...d.objectStoreNames];
+        if (!names.length) { d.close(); indexedDB.deleteDatabase('hv-sync'); return res([]); } // la base ya no existía: se creó vacía
+        const t = d.transaction(names), out = [];
+        for (const n of names) { const q = t.objectStore(n).getAllKeys(); q.onsuccess = () => out.push(...q.result); }
+        t.oncomplete = () => { d.close(); res(out); };
+      };
+    }));
+    expect(left, 'nada queda en hv-sync').toEqual([]);
+  });
 });

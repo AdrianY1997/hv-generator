@@ -1,14 +1,14 @@
 # HV Minerva (hv-generator)
 
-Generador de Hoja de Vida (formato Minerva, Colombia) como app estática, sin build ni dependencias.
+Generador de Hoja de Vida (Colombia) como app estática, sin build ni dependencias. Modelos: formato Minerva (solicitud de empleo) y Formato Único de Hoja de Vida – Persona Natural de la Función Pública; un solo perfil compartido entre ellos ([`docs/MODELOS.md`](docs/MODELOS.md)).
 
 Sitio en vivo: https://adriany1997.github.io/hv-generator/ · Código: https://github.com/AdrianY1997/hv-generator
 
-- App: [`app/`](app/README.md) (uso, arquitectura, formas de datos, cómo agregar un modelo, respaldo).
-- Brechas conocidas y pendientes: [`docs/GAPS.md`](docs/GAPS.md). Formulario condicional (`showIf`, reglas de datos y tabla de condiciones): [`docs/CONDICIONALES.md`](docs/CONDICIONALES.md). Accesibilidad y ATS: [`docs/ACCESIBILIDAD.md`](docs/ACCESIBILIDAD.md). Impresión y paginación: [`docs/IMPRESION.md`](docs/IMPRESION.md).
+- App: [`app/`](app/README.md) (uso, arquitectura, formas de datos, cómo agregar un modelo, respaldo). Al imprimir salen como anexos los certificados y los documentos cargados (también los PDF, convertidos a imagen) y todas las páginas usan margen 0 con una zona segura interna: el resultado no depende del margen elegido en el diálogo de impresión.
+- Brechas conocidas y pendientes: [`docs/GAPS.md`](docs/GAPS.md). Formulario condicional (`showIf`, reglas de datos y tabla de condiciones): [`docs/CONDICIONALES.md`](docs/CONDICIONALES.md). Accesibilidad y ATS: [`docs/ACCESIBILIDAD.md`](docs/ACCESIBILIDAD.md). Verificación legal de la lista de documentos de soporte (normas, vigencias, qué puede exigir un empleador; cierre parcial de G07): [`docs/VERIFICACION-LEGAL.md`](docs/VERIFICACION-LEGAL.md). Impresión y paginación: [`docs/IMPRESION.md`](docs/IMPRESION.md). Sincronización cifrada entre equipos (carpeta sincronizada o Gist secreto): [`docs/SYNC.md`](docs/SYNC.md).
 Probar en local: `cd app && python -m http.server 8000` y abrir `http://localhost:8000`. Los módulos ES requieren HTTP, no `file://`.
 
-Privacidad: todo (perfil, plantillas, archivos) se guarda solo en el navegador del usuario. Hay que exportar un respaldo; borrar los datos del navegador lo pierde todo.
+Privacidad: todo (perfil, plantillas, archivos) se guarda solo en el navegador del usuario. La sincronización entre equipos es opcional y sube solo una copia cifrada en el propio equipo. Hay que exportar un respaldo; borrar los datos del navegador lo pierde todo.
 
 ## Publicar en GitHub Pages
 

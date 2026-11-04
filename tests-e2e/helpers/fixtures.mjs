@@ -22,19 +22,19 @@ export const test = base.extend({
  * `profile`/`templates` van a localStorage; `ack` descarta el aviso de privacidad; `nudge:false` marca un respaldo reciente
  * (evita el recordatorio de respaldo). `files`: [{id, data:Buffer, type, name, meta?}] se guardan en IndexedDB con el store real.
  */
-export async function openApp(page, route = '/perfil', { profile, templates, ack = true, nudge = false, theme, files = [], clean = true } = {}) {
+export async function openApp(page, route = '/perfil', { profile, templates, ack = true, nudge = false, theme, files = [], clean = true, dataVersion = '3' } = {}) {
   if (clean) {
     await page.goto(SEED_URL);
-    await page.evaluate(async ({ profile, templates, ack, nudge, theme }) => {
+    await page.evaluate(async ({ profile, templates, ack, nudge, theme, dataVersion }) => {
       localStorage.clear(); sessionStorage.clear();
       await new Promise((res) => { const r = indexedDB.deleteDatabase('hv'); r.onsuccess = r.onerror = r.onblocked = () => res(); });
       if (profile) localStorage.setItem('hv.profile', JSON.stringify(profile));
       if (templates) localStorage.setItem('hv.templates', JSON.stringify(templates));
-      if (profile || templates) localStorage.setItem('hv.version', '2');
+      if (profile || templates) localStorage.setItem('hv.version', dataVersion); // = CURRENT_VERSION de migrate.js: los datos sembrados ya están migrados (dataVersion:'2' para probar la migración)
       if (ack) localStorage.setItem('hv.privacy.ack', '1');
       if (!nudge) localStorage.setItem('hv.lastBackup', String(Date.now()));
       if (theme) localStorage.setItem('hv.theme', theme);
-    }, { profile, templates, ack, nudge, theme });
+    }, { profile, templates, ack, nudge, theme, dataVersion });
   }
   await page.goto('/index.html#' + route);
   await expect(page.locator('#app h1').first()).toBeVisible();

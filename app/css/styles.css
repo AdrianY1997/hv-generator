@@ -32,6 +32,9 @@ main:focus{outline:none}
 /* Campos condicionales (showIf) y aviso de texto largo (G17/condiciones) */
 .cond-note{grid-column:1/-1;display:flex;gap:var(--space-1);align-items:center;margin:0}
 .cond-note svg{flex:none;width:.875rem;height:.875rem}
+/* Tiempo servido calculado de cada empleo (Perfil, solo lectura). */
+.svc-time__v{display:block;min-height:2.5rem;padding:var(--space-2) 0;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-ink)}
+.svc-time__n{margin:0}
 .cond-in{animation:mn-rise var(--dur-base) var(--ease)}
 .field-fit{margin:var(--space-1) 0 0;font-size:var(--text-sm);color:var(--color-ink-2);display:flex;gap:var(--space-2);align-items:center;justify-content:space-between}
 .field-fit.is-ok{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} /* sigue en el árbol de accesibilidad: la región viva ya existe cuando aparece el aviso */
@@ -139,6 +142,17 @@ main:focus{outline:none}
 .doc-how__body ol{padding-left:1.2rem;display:grid;gap:var(--space-1)}
 .doc-manual{display:flex;gap:var(--space-2);align-items:flex-start;padding:var(--space-2) var(--space-3);background:var(--color-sunken);border-radius:var(--radius-sm)}
 .doc-manual svg{flex:none;width:.875rem;height:.875rem;margin-top:.2rem}
+.doc-legal__refs{margin:0;padding-left:1.2rem;display:grid;gap:var(--space-1)}
+.doc-employer{white-space:normal}
+.doc-employer svg{flex:none}
+.doc-disclaimer-host:not(:empty){margin-block:var(--space-3)}
+.doc-disclaimer{display:flex;gap:var(--space-3);align-items:flex-start;border:1px solid var(--color-line);border-left-width:3px;background:var(--color-sunken);color:var(--color-ink);border-radius:var(--radius-sm);padding:var(--space-2) var(--space-3);font-size:var(--text-sm)}
+.doc-disclaimer>svg{flex:none;margin-top:.2rem}
+.doc-disclaimer__body{flex:1;min-width:0}
+.doc-disclaimer__body p{margin:0}
+.doc-disclaimer__more summary{cursor:pointer;padding-block:.5rem;color:var(--color-ink-2)}
+.doc-disclaimer__more p{max-width:44rem}
+.doc-disclaimer__close{flex:none}
 .doc-row-actions{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-2)}
 .vig-panel{display:grid;gap:var(--space-2);margin-top:var(--space-2)}
 .vig-panel:empty{display:none}
