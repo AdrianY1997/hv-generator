@@ -1,9 +1,10 @@
 import { h, icon, pageHead, emptyState, toast } from '../ui.js';
 import { fileSlot, urlBag, nextId } from '../forms.js';
-import { SOURCES, VIGENCIA_AVISO, shownDocIds } from '../doc-sources.js';
+import { SOURCES, VIGENCIA_AVISO, VIGENCIA_BASIS, EMPLOYER_LABEL, EMPLOYER_CHIP_NO, CONFIANZA_LABEL, LEGAL_STATUS_LABEL, DISCLAIMER, shownDocIds } from '../doc-sources.js';
 import { computeVigencia, summarizeVigencia, normCedula, cedulaMatch, fmtDMY } from '../doc-parse.js';
 import { templateMaxAge } from '../template-model.js';
 import { analyzeFile } from '../pdf-ingest.js';
+import { templatesFor } from '../models/index.js';
 
 const STATE_ICON = { vigente: 'check', por_vencer: 'alert', vencido: 'x', sin_vigencia: 'clock', no_leido: 'alert' };
 const STATE_CLASS = { vigente: 'mn-badge--ok', por_vencer: 'mn-badge--warn', vencido: 'mn-badge--danger', sin_vigencia: '', no_leido: 'mn-badge--warn' };
@@ -40,13 +41,18 @@ export function mount(el, ctx) {
   const banner = h('div', { class: 'pv-banner doc-banner', role: 'status', hidden: true });
   const toolbar = h('div', { class: 'doc-toolbar' });
   const listHost = h('div', {});
+  // Aviso legal (docs/VERIFICACION-LEGAL.md, sección 7): compacto y descartable; el descarte vale solo para esta sesión.
+  const DISC_KEY = 'hv.docs.disclaimer';
+  let discHidden = false;
+  try { discHidden = sessionStorage.getItem(DISC_KEY) === '1'; } catch { /* sin almacenamiento: se muestra */ }
+  const discHost = h('div', { class: 'doc-disclaimer-host' });
   let rows = new Map();
 
   const profile = () => store.getProfile();
   // Plantilla con la que se evalúa la vigencia (G20): si fija una antigüedad máxima, el semáforo y el resumen la usan. Solo se recuerda en esta sesión.
   let tplId = '';
   try { tplId = sessionStorage.getItem('hv.docs.tpl') || ''; } catch { /* sin almacenamiento */ }
-  const tplList = () => store.getTemplates().filter((t) => !t.modelId || t.modelId === model.id);
+  const tplList = () => templatesFor(store.getTemplates(), model.id);
   const tplCur = () => tplList().find((t) => t.id === tplId) || null;
   const vigOpts = () => ({ maxAgeDays: templateMaxAge(tplCur()) });
   const tplBox = h('div', { class: 'doc-tpl' });
@@ -54,7 +60,30 @@ export function mount(el, ctx) {
   const setIds = (d, arr) => store.updateProfile({ documents: { ...(profile().documents || {}), [d]: arr } });
   const shownList = () => { const s = new Set(shownDocIds(profile(), allIds)); return all.filter((d) => s.has(d.id)); };
   const cedula = () => normCedula(profile().personales?.numeroDocumento);
-  const setShown = (idList) => store.updateProfile({ documentsShown: allIds.filter((id) => idList.includes(id)) });
+  // Los documentos que solo tiene otro formato (p. ej. bienes y rentas del Formato Único) conservan su estado al editar la lista en este.
+  const setShown = (idList) => {
+    const cur = profile().documentsShown, docs = profile().documents || {};
+    const prev = Array.isArray(cur) ? cur : Object.keys(docs).filter((id) => Array.isArray(docs[id]) && docs[id].length); // sin lista: los que tienen archivos
+    const keep = prev.filter((id) => !allIds.includes(id));
+    store.updateProfile({ documentsShown: [...keep, ...allIds.filter((id) => idList.includes(id))] });
+  };
+
+  function renderDisclaimer() {
+    discHost.replaceChildren();
+    if (discHidden) return;
+    const tid = nextId('discl');
+    discHost.append(h('div', { class: 'doc-disclaimer', role: 'note', 'aria-labelledby': tid },
+      icon('info', 16),
+      h('div', { class: 'doc-disclaimer__body' },
+        h('p', {}, h('strong', { id: tid }, DISCLAIMER.title), ' Cada entidad o convocatoria define qué soportes exige; verifica siempre con quien te contrata.'),
+        h('details', { class: 'doc-disclaimer__more' }, h('summary', {}, 'Leer el aviso completo'), h('p', {}, DISCLAIMER.body))),
+      h('button', { type: 'button', class: 'mn-btn mn-btn--quiet mn-btn--sm doc-disclaimer__close', 'aria-label': 'Ocultar el aviso legal durante esta sesión', onclick: () => {
+        discHidden = true;
+        try { sessionStorage.setItem(DISC_KEY, '1'); } catch { /* sin almacenamiento */ }
+        renderDisclaimer();
+        document.getElementById('doc-add')?.focus();
+      } }, icon('x', 12), 'Ocultar')));
+  }
 
   // ---------- Resumen y avance ----------
   async function metasOf(docs) {
@@ -123,6 +152,7 @@ export function mount(el, ctx) {
     if (m.estado) facts.push(`Estado: ${ESTADO[m.estado]}`);
     const top = h('div', { class: 'vig-row' }, chip, v.detail && v.state !== 'sin_vigencia' ? h('span', { class: 'vig-detail' }, v.detail) : null);
     panel.append(top);
+    if (src && src.vigencia.tipo !== 'ninguna' && v.basis && v.state !== 'sin_vigencia') panel.append(h('p', { class: 'mn-help vig-basis' }, 'Regla aplicada: ' + (v.basis === 'plantilla' ? 'límite de la plantilla.' : (VIGENCIA_BASIS[v.basis] || '') + '.')));
     if (facts.length) panel.append(h('ul', { class: 'vig-facts' }, facts.map((x) => h('li', {}, x))));
     const match = cedulaMatch(m.cedulasLeidas, profile().personales?.numeroDocumento);
     if (match === false) {
@@ -174,15 +204,25 @@ export function mount(el, ctx) {
         ...(s.notes || []).map((x) => h('p', { class: 'mn-help' }, x)),
         s.urlNota ? h('p', { class: 'mn-help' }, 'Aviso: ' + s.urlNota) : null,
         links.length ? h('p', { class: 'mn-help' }, 'Otras rutas: ', links.map((l, i) => [i ? ' · ' : '', h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer' }, l.label)])) : null,
-        h('p', { class: 'mn-help' }, h('strong', {}, 'Vigencia: '), s.vigencia.tipo === 'ninguna' ? s.vigencia.fuente : `${s.vigencia.dias} días. ${s.vigencia.fuente}${s.vigencia.nota ? ' ' + s.vigencia.nota : ''} ${VIGENCIA_AVISO}`),
+        h('p', { class: 'mn-help' }, h('strong', {}, 'Vigencia: '), s.vigencia.tipo === 'ninguna' ? s.vigencia.fuente : `${s.vigencia.dias} días (${VIGENCIA_BASIS[s.vigencia.basis] || 'regla oficial'}). ${s.vigencia.fuente}${s.vigencia.nota ? ' ' + s.vigencia.nota : ''} ${VIGENCIA_AVISO}`),
         h('p', { class: 'mn-help' }, 'Esta app nunca envía tus datos a esos sitios: solo abre su página y copia tu cédula a tu portapapeles.')));
+    const em = s.employerMayRequire;
+    const legal = h('details', { class: 'doc-how doc-legal' },
+      h('summary', {}, 'Base legal'),
+      h('div', { class: 'doc-how__body' },
+        em ? h('p', {}, h('strong', {}, '¿Puede exigirlo un empleador? '), `${EMPLOYER_LABEL[em.value]} (${CONFIANZA_LABEL[em.confianza]}). ${em.nota}`) : null,
+        s.publicEntityNote ? h('p', {}, h('strong', {}, 'Si el empleador es una entidad pública: '), s.publicEntityNote) : null,
+        s.legalBasis?.length ? h('ul', { class: 'doc-legal__refs' }, s.legalBasis.map((r) => h('li', {}, h('a', { href: r.url, target: '_blank', rel: 'noopener noreferrer' }, r.text, h('span', { class: 'mn-sr' }, ' (se abre en una pestaña nueva)'))))) : null,
+        s.legalNote ? h('p', { class: 'mn-help', 'data-legal-note': s.id }, s.legalNote) : null,
+        h('p', { class: 'mn-help' }, `${LEGAL_STATUS_LABEL[s.legalStatus] || ''}. Información orientativa, no es asesoría jurídica: verifica con la entidad.`)));
     return h('div', { class: 'doc-source' },
       h('div', { class: 'doc-tags' },
         h('span', { class: 'mn-badge doc-verdict', title: s.verdict === 'Asistido' ? 'La app te lleva al sitio y lee el PDF; el paso en el sitio lo haces tú.' : 'Solo enlace e instrucciones: no se puede acercar más.' }, s.verdict),
         s.optional ? h('span', { class: 'mn-badge' }, 'Si lo exige el cargo') : null,
+        em?.value === 'no' ? h('span', { class: 'mn-badge mn-badge--warn doc-employer', 'data-employer': 'no' }, icon('info', 12), em.chip || EMPLOYER_CHIP_NO) : null,
         h('span', { class: 'doc-entity' }, s.entidad)),
       actions.length ? h('div', { class: 'doc-actions' }, actions) : null,
-      how);
+      how, legal);
   }
 
   function row(d) {
@@ -311,7 +351,8 @@ export function mount(el, ctx) {
       return h('li', {}, h('label', { class: 'mn-check doc-pick' }, cb, h('span', {}, h('span', { class: 'doc-pick__t' }, d.label),
         s ? h('span', { class: 'doc-pick__s' }, `${s.entidad} · ${s.verdict}${s.optional ? ' · si lo exige el cargo' : ''}`) : null)));
     };
-    const core = all.filter((d) => SOURCES[d.id]?.core), rest = all.filter((d) => !SOURCES[d.id]?.core);
+    const tierOf = (d) => SOURCES[d.id]?.tier || 'otros';
+    const core = all.filter((d) => tierOf(d) === 'core'), opt = all.filter((d) => tierOf(d) === 'optional'), rest = all.filter((d) => tierOf(d) === 'otros');
     const bulk = (on) => {
       if (on) { setShown(allIds); renderList(); toast('Todos los documentos están en la lista.'); }
       else if (hide(shownList().map((d) => d.id))) toast('Lista de documentos vaciada.');
@@ -327,7 +368,8 @@ export function mount(el, ctx) {
           h('button', { type: 'button', class: 'mn-btn mn-btn--quiet mn-btn--sm', onclick: () => bulk(true) }, 'Todos'),
           h('button', { type: 'button', class: 'mn-btn mn-btn--quiet mn-btn--sm', onclick: () => bulk(false) }, 'Ninguno')),
         h('fieldset', { class: 'doc-pick__set' }, h('legend', { class: 'mn-label' }, 'Principales'), h('ul', {}, core.map(item))),
-        h('fieldset', { class: 'doc-pick__set' }, h('legend', { class: 'mn-label' }, 'Otros'), h('ul', {}, rest.map(item)))),
+        h('fieldset', { class: 'doc-pick__set' }, h('legend', { class: 'mn-label' }, 'Opcionales (si la convocatoria los exige)'), h('ul', {}, opt.map(item))),
+        h('fieldset', { class: 'doc-pick__set' }, h('legend', { class: 'mn-label' }, 'Otros (ocultos por defecto)'), h('ul', {}, rest.map(item)))),
       h('div', { class: 'mn-dialog__foot' }, h('button', { type: 'button', class: 'mn-btn mn-btn--primary', onclick: close }, 'Listo')));
     dlg.addEventListener('close', () => { dlg.remove(); (document.getElementById('doc-add') || opener)?.focus(); });
     refreshBoxes();
@@ -340,7 +382,8 @@ export function mount(el, ctx) {
       eyebrow: 'Documentos', title: 'Documentos requeridos', text: 'Reúne estos soportes antes de radicar tu hoja de vida. Todo se guarda en este equipo y la lectura de los PDF también ocurre aquí.',
       aside: h('div', { class: 'doc-progress' }, h('div', { class: 'doc-count' }, h('span', { class: 'mn-eyebrow' }, 'Avance'), countNum), stamp),
     }),
-    summary, bar, banner, tplBox, toolbar, listHost));
+    summary, bar, discHost, banner, tplBox, toolbar, listHost));
+  renderDisclaimer();
   renderList();
   return () => { alive = false; bag.revokeAll(); document.querySelectorAll('dialog.doc-picker').forEach((x) => x.remove()); };
 }

@@ -2,6 +2,12 @@
 /* ---- Pantalla: vista previa ---- */
 .pv-opts{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-4);margin-bottom:var(--space-3)}
 .pv-field{display:grid;gap:var(--space-1);min-width:min(100%,14rem)}
+.pv-annex-opts{margin:0;padding:0;border:0;align-content:start}
+.pv-annex-opts .mn-check{min-height:1.5rem}
+.pv-annex-wrap{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-2) var(--space-4)}
+.pv-annex-sum{margin:var(--space-2) 0;font-size:var(--text-sm);color:var(--color-ink)}
+.pv-annex-wrap .pv-annex-sum{flex:1 1 18rem;margin:0}
+.pv-annex-sum__warn{color:var(--color-ink)}
 .pv-bar{flex-wrap:wrap;gap:var(--space-2) var(--space-3);margin-bottom:var(--space-3)}
 .pv-zoomctl{display:flex;align-items:center;gap:var(--space-1)}
 .pv-zoom-out{min-width:3rem;text-align:center;font-size:var(--text-sm);font-variant-numeric:tabular-nums}
@@ -34,14 +40,16 @@
 }
 
 @media print{
-  @page{size:Letter;margin:.5in}
+  /* El papel y el margen 0 (@page) los pone SOLO la Vista previa, mientras está montada (printCss en js/export.js, <style id="pv-pagesize"> al
+     final del <head>; la quita al salir). Aquí NO hay @page a propósito: una regla @page no se puede acotar a una vista y se heredaría al
+     imprimir con Ctrl+P en Perfil, Documentos, etc. Las reglas propias de la HV van bajo body.pv-on (clase puesta por la Vista previa). */
   html,body{background:#fff!important}
   .topbar,.skip,noscript,.notices,.mn-toasts,.vista-previa>:not(.pv-stage),.pv-bar,.pv-banner,.pv-help,.pv-head,.pv-notice,.view-head,.page-head{display:none!important}
   main{max-width:none!important;margin:0!important;padding:0!important}
-  .pv-stage{background:none!important;padding:0!important;overflow:visible!important;max-height:none!important;border-radius:0!important;display:block!important}
-  .pv-zoom{zoom:1!important;transform:none!important;filter:none!important}
+  body.pv-on .pv-stage{background:none!important;padding:0!important;overflow:visible!important;max-height:none!important;border-radius:0!important;display:block!important}
+  body.pv-on .pv-zoom{zoom:1!important;transform:none!important;filter:none!important}
   /* G08: la lectura lineal para lector de pantalla (minerva.js, a11yText) no se imprime: el PDF ya tiene el texto de las hojas. */
-  .hv-sr{display:none!important}
+  body.pv-on .hv-sr{display:none!important}
   /* G14: un título de sección de la hoja de continuación nunca queda solo al pie de una página con su tabla en la siguiente. */
-  .hv-cont h1,.hv-cont>p,.mv-cs h2{break-after:avoid}
+  body.pv-on .hv-cont h1,body.pv-on .hv-cont>p,body.pv-on .mv-cs h2{break-after:avoid}
 }

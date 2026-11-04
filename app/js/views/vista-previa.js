@@ -2,7 +2,7 @@ import { h, icon, pageHead, toast } from '../ui.js';
 import { uid } from '../forms.js';
 import { shownDocIds } from '../doc-sources.js';
 import { summarizeVigencia, vigenciaWarning } from '../doc-parse.js';
-import { loadFiles, neededFileIds, standaloneHtml, downloadHtml, downloadJson, download, printWithTitle, slug } from '../export.js';
+import { loadFiles, neededFileIds, standaloneHtml, downloadHtml, downloadJson, download, printWithTitle, applyPrintPage, clearPrintPage, slug } from '../export.js';
 import { isPlainObject, MAX_BACKUP_JSON, MAX_ENVELOPE_JSON } from '../backup-validate.js';
 import { prepareBackup, mergeSummaryText } from '../backup-merge.js';
 import { openImportDialog, openPassphraseDialog, downloadBackupFlow } from '../import-dialog.js';
@@ -10,6 +10,9 @@ import { isEncryptedEnvelope, validateEnvelope, decryptBackup } from '../backup-
 import { normalizeTemplate, templateMaxAge } from '../template-model.js';
 import { docSelected } from '../template-check.js';
 import { validateProfile, issueText } from '../validators.js';
+import { getModel, templatesFor, templateModelId, registry, DEFAULT_MODEL } from '../models/index.js';
+import { deriveShared } from '../models/shared-fields.js';
+import { annexFlags } from '../models/sheet-kit.js';
 
 /** Vista "Vista previa": HV renderizada, impresión y exportación. ctx = { model, store, router }. */
 export function mount(el, ctx) {
@@ -18,8 +21,14 @@ export function mount(el, ctx) {
   try { zoom = Number(sessionStorage.getItem('hv.pv.zoom')) || 1; paper = sessionStorage.getItem('hv.pv.paper') || 'letter'; } catch {}
 
   const queryId = () => router?.query?.().get('template') || '';
-  const templates = () => store.getTemplates().filter((t) => !t.modelId || t.modelId === model.id);
-  const current = () => templates().find((t) => t.id === queryId()) || null;
+  // El selector lista las plantillas del formato activo; una plantilla pedida por enlace (?template=) se muestra SIEMPRE con su propio
+  // formato (template.modelId), aunque el encabezado tenga otro.
+  const templates = () => templatesFor(store.getTemplates(), model.id);
+  const current = () => store.getTemplates().find((t) => t.id === queryId()) || null;
+  const mdl = () => { const t = current(); return t ? getModel(templateModelId(t)) : model; };
+  // Plantilla pedida (?template=) de un formato que esta versión no conoce (respaldo/enlace de una versión con más modelos): se muestra con el
+  // formato por omisión, pero se AVISA (sin bloquear) en vez de aparentar que es el suyo.
+  const unknownModelId = () => { const t = current(); return t && !registry[templateModelId(t)] ? templateModelId(t) : null; };
 
   const ZMIN = 0.4, ZMAX = 1.5;
   const sel = h('select', { id: 'pv-template', class: 'mn-select' });
@@ -31,36 +40,99 @@ export function mount(el, ctx) {
   const banner = h('div', { class: 'pv-banner', role: 'status' });
   const notice = h('p', { class: 'mn-help pv-help pv-notice', role: 'status' });
   const stage = h('div', { class: 'pv-stage mn-canvas', tabindex: '0', role: 'region', 'aria-label': 'Vista previa de la hoja de vida (desplazable)' });
+  // Anexos de esta vista (certificados y documentos adjuntos): por omisión, lo que diga la plantilla (sin plantilla: los dos). Lo que la persona
+  // cambie aquí vale para esta vista y esta sesión (por plantilla), no se guarda en la plantilla. sessionStorage `hv.pv.annex`.
+  let annexOv = {};
+  try { const v = JSON.parse(sessionStorage.getItem('hv.pv.annex') || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) annexOv = v; } catch {}
+  const ovKey = () => current()?.id || '-';
+  const annexOpts = () => {
+    const o = annexOv[ovKey()];
+    return o && typeof o === 'object' ? { annex: { certificates: typeof o.certificates === 'boolean' ? o.certificates : undefined, documents: typeof o.documents === 'boolean' ? o.documents : undefined } } : {};
+  };
+  const attCerts = h('input', { type: 'checkbox', id: 'pv-att-certs' });
+  const attDocs = h('input', { type: 'checkbox', id: 'pv-att-docs' });
+  const annexBox = h('fieldset', { class: 'pv-field pv-annex-opts' }, h('legend', { class: 'mn-label' }, 'Anexos al final'),
+    h('label', { class: 'mn-check', for: 'pv-att-docs' }, attDocs, 'Incluir documentos adjuntos'),
+    h('label', { class: 'mn-check', for: 'pv-att-certs' }, attCerts, 'Incluir certificados'));
+  const annexSum = h('p', { class: 'mn-help pv-annex-sum', role: 'status', id: 'pv-annex-sum' });
+  const annexWrap = h('div', { class: 'pv-annex-wrap' }, annexBox, annexSum); // el interruptor va junto al resumen que lo explica
+  const pdfCache = new Map(); // páginas de PDF ya convertidas a imagen (export.js), mientras la vista esté abierta
   const zoomBox = h('div', { class: 'pv-zoom' });
   stage.append(zoomBox);
 
   function fillSelect() {
     const id = queryId();
+    const cur = current(), list = templates();
+    const foreign = cur && !list.some((t) => t.id === cur.id) ? cur : null;
     sel.replaceChildren(h('option', { value: '' }, 'Hoja de vida completa (sin plantilla)'),
-      ...templates().map((t) => h('option', { value: t.id }, t.name || t.id)));
-    sel.value = templates().some((t) => t.id === id) ? id : '';
+      ...list.map((t) => h('option', { value: t.id }, t.name || t.id)),
+      ...(foreign ? [h('option', { value: foreign.id }, `${foreign.name || foreign.id} (${registry[templateModelId(foreign)] ? getModel(templateModelId(foreign)).name : `formato desconocido «${templateModelId(foreign)}»: se muestra como ${getModel(DEFAULT_MODEL).name}`})`)] : []));
+    sel.value = cur ? cur.id : '';
   }
 
   const docName = () => {
-    const p = store.getProfile().personales || {};
+    const p = deriveShared(store.getProfile()).personales || {}; // apellidos escritos en cualquier formato
     return [p.nombres, p.apellidos].filter(Boolean).join(' ') || 'Sin nombre';
   };
   const title = () => `HV - ${docName()}`;
-  const build = () => model.render(store.getProfile(), current(), files);
-  // Carga perezosa: solo se codifican los binarios que esta plantilla usa (foto y anexos incluidos); `files` anterior queda libre.
-  let loadedKey = null;
-  const wantIds = () => neededFileIds(model, store.getProfile(), current());
+  const build = () => mdl().render(store.getProfile(), current(), files, annexOpts());
+  // Carga perezosa: solo se codifican los binarios que esta vista usa (foto y anexos incluidos, con los PDF convertidos a imágenes de página
+  // para imprimir); `files` anterior queda libre. `seq` descarta una carga que terminó después de otra más nueva.
+  let loadedKey = null, loading = false, seq = 0;
+  const wantIds = () => neededFileIds(mdl(), store.getProfile(), current(), annexOpts());
   const keyOf = (ids) => (ids ? [...new Set(ids)].sort().join('|') : '*');
   async function reloadFiles() {
-    const ids = wantIds();
-    files = await loadFiles(store, ids);
-    loadedKey = keyOf(ids);
+    const ids = wantIds(), my = ++seq;
+    loading = true;
+    try {
+      const got = await loadFiles(store, ids, { pdf: true, cache: pdfCache });
+      if (my !== seq) return;
+      files = got;
+      loadedKey = keyOf(ids);
+    } finally { if (my === seq) loading = false; }
+  }
+  const setAnnex = (k, v) => {
+    annexOv = { ...annexOv, [ovKey()]: { ...(annexOv[ovKey()] || {}), [k]: v } };
+    try { sessionStorage.setItem('hv.pv.annex', JSON.stringify(annexOv)); } catch {}
+    update();
+    reloadFiles().then(() => update()).catch((e) => console.error(e));
+  };
+  attCerts.addEventListener('change', () => setAnnex('certificates', attCerts.checked));
+  attDocs.addEventListener('change', () => setAnnex('documents', attDocs.checked));
+  // Los fallos de conversión no se guardan en la caché (export.js): reintentar vuelve a leer y convertir los PDF que fallaron.
+  const retryPdfs = () => {
+    const done = reloadFiles().then(() => { update(); document.getElementById('pv-annex-retry')?.focus(); }).catch((e) => console.error(e));
+    update(); // muestra «Preparando los anexos…» mientras tanto
+    return done;
+  };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  /** Resumen visible de los anexos de esta vista: cuántos documentos y páginas salen, qué no se pudo incluir y por qué. */
+  function annexSummary(model, profile, t) {
+    const on = annexFlags(t, annexOpts().annex);
+    attCerts.checked = on.certificates; attDocs.checked = on.documents;
+    const info = model.annexInfo?.(profile, t, files, annexOpts());
+    annexSum.replaceChildren();
+    if (!info) return;
+    const off = [!on.documents ? 'los documentos adjuntos' : '', !on.certificates ? 'los certificados' : ''].filter(Boolean).join(' y ');
+    annexSum.append(h('strong', {}, `Anexos: ${plural(info.items, 'documento', 'documentos')} / ${plural(info.pages, 'página', 'páginas')}`),
+      info.items ? ' al final de la impresión.' : (off ? ` (desactivaste ${off}).` : ' (no hay archivos cargados para esta vista).'));
+    // Decisión registrada (docs/IMPRESION.md): los documentos adjuntos van por omisión cuando no hay plantilla; se dice y se puede quitar aquí mismo.
+    const docN = on.documents ? (model.annexList?.(profile, t, files, annexOpts()) || []).filter((a) => String(a.id).startsWith('doc:')).length : 0;
+    if (docN) annexSum.append(h('span', { 'data-annex-docs': String(docN) }, ` Se incluyen ${plural(docN, 'documento', 'documentos')} de identidad/salud en esta vista y en el HTML descargable. Si no quieres que salgan, desmarca «Incluir documentos adjuntos».`));
+    if (loading) annexSum.append(' Preparando los anexos…');
+    if (info.truncated.length) annexSum.append(h('span', { class: 'pv-annex-sum__warn', 'data-annex-truncated': String(info.truncated.length) }, ' ' + info.truncated.map((x) => `De «${x.title}» se imprimen las primeras ${x.shown} de ${x.total} páginas${x.reason ? ` (${x.reason})` : ''}.`).join(' ') + ' El paquete PDF lo lleva completo.'));
+    if (info.loose.length && !loading) {
+      annexSum.append(h('span', { class: 'pv-annex-sum__warn', 'data-annex-loose': String(info.loose.length) }, ` No se pudieron incluir en la impresión: ${info.loose.map((x) => `${x.title} (${x.reason})`).join('; ')}. Use «Descargar paquete PDF» o adjúntelos aparte.`));
+      if (info.loose.some((x) => x.retry)) annexSum.append(' ', h('button', { type: 'button', id: 'pv-annex-retry', class: 'mn-btn mn-btn--quiet mn-btn--sm', onclick: retryPdfs }, 'Reintentar'));
+    }
   }
 
   function update() {
     if (!alive) return;
-    const profile = store.getProfile(), t = current();
+    const profile = store.getProfile(), t = current(), model = mdl();
     zoomBox.innerHTML = build();
+    zoomBox.dataset.model = model.id;
+    applyPrintPage(paper); // todas las páginas con margen 0 y el papel elegido, también para Ctrl+P
     stage.classList.toggle('hv-a4', paper === 'a4');
     zoomBox.style.zoom = String(zoom);
     zoomOut.textContent = `${Math.round(zoom * 100)}%`;
@@ -78,10 +150,12 @@ export function mount(el, ctx) {
       include: (sec, fid, rec) => !t || ((t.include?.sections === undefined || t.include.sections[sec] !== false) && t.include?.fields?.[`${sec}.${fid}`] !== false && t.include?.items?.[rec?.id] !== false),
     });
     banner.replaceChildren();
-    banner.className = 'pv-banner' + (miss.length || vigBad.length || review.length ? '' : ' ok') + (vig.vencidos.length ? ' danger' : '');
-    banner.append(icon(miss.length || vigBad.length || review.length ? 'alert' : 'check', 16));
+    const unknownId = unknownModelId();
+    banner.className = 'pv-banner' + (miss.length || vigBad.length || review.length || unknownId ? '' : ' ok') + (vig.vencidos.length ? ' danger' : '');
+    banner.append(icon(miss.length || vigBad.length || review.length || unknownId ? 'alert' : 'check', 16));
     const msgBox = h('div', { class: 'pv-banner__body' });
     banner.append(msgBox);
+    if (unknownId) msgBox.append(h('p', { 'data-notice': 'unknown-model' }, h('strong', {}, `La plantilla «${t.name || t.id}» es de un formato desconocido («${unknownId}»). `), `Se muestra con el formato «${model.name}» (el predeterminado) para que puedas verla; revisa el resultado antes de imprimir o actualiza la app.`));
     if (miss.length) {
       msgBox.append(h('strong', {}, `Faltan ${miss.length} dato(s) requerido(s)${t ? ' para "' + (t.name || t.id) + '"' : ''}:`),
         h('ul', {}, miss.slice(0, 30).map((m) => h('li', {}, m)), miss.length > 30 ? h('li', {}, `... y ${miss.length - 30} más`) : null));
@@ -96,11 +170,7 @@ export function mount(el, ctx) {
         h('ul', { class: 'pv-review' }, review.slice(0, 12).map((x) => h('li', {}, issueText(x))), review.length > 12 ? h('li', {}, `... y ${review.length - 12} más`) : null),
         h('p', { class: 'pv-help' }, 'Corrígelos en Perfil si es un error; si el dato es correcto, ignora el aviso.'));
     }
-    const info = model.annexInfo?.(profile, t, files);
-    if (info && (info.images || info.others)) {
-      msgBox.append(h('p', { class: 'pv-help' }, `Anexos: ${info.images} imagen(es) incluidas al final de la impresión.` +
-        (info.others ? ` ${info.others} archivo(s) PDF no salen al imprimir: use «Descargar paquete PDF» para obtener un solo archivo con la HV y todos los anexos (imágenes y PDF), o adjúntelos aparte.` : '')));
-    }
+    annexSummary(model, profile, t);
   }
 
   // Importa un respaldo completo (diálogo: combinar o reemplazar; G12) o una plantilla exportada.
@@ -166,8 +236,8 @@ export function mount(el, ctx) {
     try {
       say('Preparando el paquete...');
       const { buildPackage } = await import('../pdf-package.js');
-      const profile = store.getProfile(), t = current();
-      const annexList = model.annexList ? model.annexList(profile, t, files) : [];
+      const profile = store.getProfile(), t = current(), model = mdl();
+      const annexList = model.annexList ? model.annexList(profile, t, files, annexOpts()) : [];
       const r = await buildPackage({ html: build(), paper, title: title(), annexList, getFile: (id) => store.getFile(id), withHv, onProgress: say });
       download(`${slug(docName())}-${withHv ? 'paquete' : 'anexos'}.pdf`, r.blob);
       say(`Listo: ${r.pages} página(s)` + (withHv ? ` (${r.hvPages} de la HV y ${r.annexPages} de anexos)` : ' de anexos') +
@@ -215,7 +285,7 @@ export function mount(el, ctx) {
   el.replaceChildren(h('div', { class: 'vista-previa' },
     pageHead({ eyebrow: 'Vista previa', title: 'Vista previa', text: 'Revisa tu hoja de vida antes de imprimirla o descargarla. Todo se queda en este equipo.' }),
     h('div', { class: 'pv-opts' },
-      h('label', { class: 'pv-field' }, h('span', { class: 'mn-label' }, 'Plantilla'), sel), h('label', { class: 'pv-field' }, h('span', { class: 'mn-label' }, 'Papel'), paperSel)),
+      h('label', { class: 'pv-field' }, h('span', { class: 'mn-label' }, 'Plantilla'), sel), h('label', { class: 'pv-field' }, h('span', { class: 'mn-label' }, 'Papel'), paperSel), annexWrap),
     h('div', { class: 'mn-toolbar pv-bar' },
       h('div', { class: 'pv-zoomctl', role: 'group', 'aria-label': 'Zoom' }, zoomMinus, zoomOut, zoomPlus), actions, more),
     notice, banner, stage));
@@ -234,5 +304,5 @@ export function mount(el, ctx) {
     if (!alive) return;
     fillSelect(); update();
   });
-  return () => { alive = false; unsub(); files = {}; };
+  return () => { alive = false; seq++; unsub(); files = {}; pdfCache.clear(); zoomBox.replaceChildren(); clearPrintPage(); }; // suelta las páginas en memoria y el CSS de impresión de la HV
 }

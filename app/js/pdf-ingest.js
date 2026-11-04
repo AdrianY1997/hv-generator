@@ -3,8 +3,10 @@
 import { analyzeText, pickPages, pageCharCap } from './doc-parse.js';
 
 let pdfjsP = null;
-function loadPdfjs() {
+/** pdf.js perezoso y compartido (también lo usa pdf-raster.js para imprimir los anexos PDF). */
+export function loadPdfjs() {
   pdfjsP ??= import('../vendor/pdfjs/pdf.min.js').then((m) => {
+    // El worker se carga por URL del MISMO ORIGEN (CSP: worker-src 'self'); no lo cambies a blob: ni a un CDN. Lo guarda tests/csp.test.mjs.
     m.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdfjs/pdf.worker.min.js', import.meta.url).href;
     return m;
   }).catch((e) => { pdfjsP = null; throw e; });
@@ -33,9 +35,14 @@ export async function extractPdfText(blob, { head = 4, tail = 2 } = {}, hold = {
     }
     return text;
   } finally {
-    try { doc?.destroy?.(); } catch { /* ya destruido */ }
-    try { await task.destroy?.(); } catch { /* ya destruido */ }
+    quietDestroy(doc);
+    quietDestroy(task); // nunca `await`: un worker atascado no contesta al «Terminate» (docs/IMPRESION.md)
   }
+}
+
+/** destroy() sin esperar: si el worker está atascado nunca resuelve y colgaría la ingesta más allá de su timeout. */
+export function quietDestroy(obj) {
+  try { Promise.resolve(obj?.destroy?.()).catch(() => {}); } catch { /* ya destruido */ }
 }
 
 /** Analiza un archivo adjuntado a un documento -> parche para el meta del archivo (siempre incluye `lectura`). */
@@ -51,7 +58,7 @@ export async function analyzeFile(file, docId, profileCedula = '') {
     return { lectura: 'fallo', motivo: 'error_pdf' };
   } finally {
     clearTimeout(timer);
-    try { await hold.task?.destroy?.(); } catch { /* ya destruido: libera worker y memoria tras el timeout */ }
+    quietDestroy(hold.task); // libera worker y memoria tras el timeout, sin esperar su respuesta
   }
   return analyzeText(text, docId, profileCedula);
 }
