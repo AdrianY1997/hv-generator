@@ -5,7 +5,7 @@
 .hv-a4 .hv-doc{--s:.97273;--pw:210mm;--ph:297mm}
 
 /* Hojas del formulario: 612x792 pt escaladas a la hoja (A4 encaja el ancho) */
-.hv-sheet{position:relative;width:calc(612pt*var(--s));height:calc(792pt*var(--s));margin:0 auto 16px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);overflow:hidden;page:form;break-after:page}
+.hv-sheet{position:relative;width:calc(612pt*var(--s));height:calc(792pt*var(--s));margin:0 auto 16px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.25);overflow:hidden;break-after:page}
 .mv-page{position:absolute;left:0;top:0;width:612pt;height:792pt;transform:scale(var(--s));transform-origin:0 0;background:#fff;color:#000;font-family:Arial,"Liberation Sans",Helvetica,sans-serif}
 .mv-bg,.mv-ov{position:absolute;left:0;top:0;display:block;pointer-events:none}
 .mv-bg text{white-space:pre}
@@ -32,7 +32,7 @@
 .hv-tbl th{font-size:6.5pt;font-weight:700;color:var(--c);background:#75bee9}
 .hv-tbl tr{break-inside:avoid}
 .hv-l{display:block;font-size:7pt;color:#444}
-.hv-annex{break-before:page;page:annex}
+.hv-annex{break-before:page}
 .hv-annex>h2{margin:0 0 8px;font-size:12pt}
 .hv-fit{height:calc(var(--ph) - 2*var(--pm) - 40px);display:flex;align-items:center;justify-content:center}
 .hv-fit img{max-width:100%;max-height:100%;object-fit:contain}
@@ -40,7 +40,6 @@
 body.hv-standalone{margin:0;background:#888}
 
 @media print{
-  @page form{margin:0}
   html,body{background:#fff!important}
   .hv-doc,.hv-a4 .hv-doc{--pm:0in;--pw:100%;--ph:10in}
   .hv-sheet{margin:0;box-shadow:none;break-inside:avoid}
