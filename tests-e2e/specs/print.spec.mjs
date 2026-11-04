@@ -112,6 +112,21 @@ function pdfMetrics(page, buf) {
   }, buf.toString('base64'));
 }
 
+/** page.pdf con reintento ante la primera página vacía de más (Chromium, ver docs/IMPRESION.md): en el Linux del CI ocurre más a menudo que en local.
+ *  `ok(pages)` dice si el PDF es el esperado; se repite hasta 4 veces con una pausa breve para que el rasterizador termine, y se devuelven los
+ *  reintentos usados (se anotan; si el PDF sigue mal, el expect del caso falla con el detalle). */
+async function printPdf(page, ok = (pages) => pages[0]?.texts > 0) {
+  let buf, pages, retries = 0;
+  for (;;) {
+    buf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    pages = await pdfMetrics(page, buf);
+    if (ok(pages) || retries >= 4) break;
+    retries++;
+    await page.waitForTimeout(250);
+  }
+  return { buf, pages, retries };
+}
+
 const record = (browserName, name, paper, data) => {
   fs.mkdirSync(OUT, { recursive: true });
   fs.appendFileSync(path.join(OUT, `print-${browserName}.jsonl`), JSON.stringify({ browser: browserName, scenario: name, paper, ...data }) + '\n');
@@ -128,12 +143,7 @@ for (const paper of ['letter', 'a4']) {
       // 150/150 PDF correctos (ver docs/IMPRESION.md). Por eso una página vacía se reintenta hasta 2 veces y se anota; si persiste, falla.
       let buf = null, pdfPages = null, pdfRetries = 0;
       if (browserName === 'chromium') {
-        for (;;) {
-          buf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
-          pdfPages = await pdfMetrics(page, buf);
-          if (pdfPages.every((p) => p.texts > 0) || pdfRetries >= 2) break;
-          pdfRetries++;
-        }
+        ({ buf, pages: pdfPages, retries: pdfRetries } = await printPdf(page, (pp) => pp.every((p) => p.texts > 0)));
       }
       // La página impresa no tiene margen (@page margin 0): el viewport es el ancho del papel y la zona segura es el relleno de la hoja de flujo.
       await page.setViewportSize({ width: Math.round(pg.w), height: 900 });
@@ -249,13 +259,13 @@ for (const modelId of ['minerva', 'formato-unico']) {
       await page.evaluate(() => { window.print = () => {}; });
       await page.getByRole('button', { name: 'Imprimir', exact: true }).click();
       await page.emulateMedia({ media: 'print' });
+      await page.evaluate(() => document.fonts.ready);
       await settled(page);
       const pg = PAGE[paper];
-      const buf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+      const { buf, pages } = await printPdf(page);
       fs.mkdirSync(OUT, { recursive: true });
       fs.writeFileSync(path.join(OUT, `anexos-${modelId}-${paper}.pdf`), buf);
       await testInfo.attach('anexos.pdf', { body: buf, contentType: 'application/pdf' });
-      const pages = await pdfMetrics(page, buf);
       const sheets = await page.locator('.pv-stage .hv-sheet').count(); // hojas del formulario (el Formato Único repite la de experiencia)
       for (const [i, p] of pages.entries()) {
         expect(Math.abs(p.w - pg.ptW), `ancho de la página ${i + 1}`).toBeLessThanOrEqual(1);
@@ -309,13 +319,13 @@ for (const modelId of ['minerva', 'formato-unico']) {
       await page.evaluate(() => { window.print = () => {}; });
       await page.getByRole('button', { name: 'Imprimir', exact: true }).click();
       await page.emulateMedia({ media: 'print' });
+      await page.evaluate(() => document.fonts.ready);
       await settled(page);
       const pg = PAGE[paper];
-      const buf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+      const { buf, pages } = await printPdf(page);
       fs.mkdirSync(OUT, { recursive: true });
       fs.writeFileSync(path.join(OUT, `anexo-largo-${modelId}-${paper}.pdf`), buf);
       await testInfo.attach('anexo-largo.pdf', { body: buf, contentType: 'application/pdf' });
-      const pages = await pdfMetrics(page, buf);
       const counts = await page.evaluate(() => ({ sheets: document.querySelectorAll('.pv-stage .hv-sheet').length, cont: document.querySelectorAll('.pv-stage .hv-cont').length, annex: document.querySelectorAll('.pv-stage .hv-annex').length }));
       expect(pages.length, 'una página por hoja, continuación y anexo: ni una más (sin páginas en blanco)').toBe(counts.sheets + counts.cont + counts.annex);
       expect(counts.cont, 'la continuación larga se repartió en varios elementos .hv-page').toBeGreaterThanOrEqual(1);
