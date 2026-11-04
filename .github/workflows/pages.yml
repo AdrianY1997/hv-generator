@@ -20,8 +20,8 @@ jobs:
     env:
       CI: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -45,16 +45,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
       - name: Versionar el service worker (cache por commit)
         run: sed -i "s/__BUILD__/${GITHUB_SHA::10}/" app/sw.js
       - name: Comprobar que el sello quedó en el service worker
         run: grep -q "const VERSION = '[0-9a-f]\{10\}'" app/sw.js
       - name: Quitar pruebas del artefacto (solo se publica la app)
         run: rm -rf app/tests
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: app
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

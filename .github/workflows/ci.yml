@@ -24,8 +24,8 @@ jobs:
     name: Unitarias (node:test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm test
@@ -38,8 +38,8 @@ jobs:
       run:
         working-directory: tests-e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -49,7 +49,7 @@ jobs:
       - run: npm run test:e2e:core
       - name: Subir los PDF de impresión generados y sus cifras (G14)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: impresion-pdf
           path: tests-e2e/out/
@@ -57,7 +57,7 @@ jobs:
           if-no-files-found: warn
       - name: Subir trazas y capturas del fallo
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-chromium-fallos
           path: |
@@ -74,8 +74,8 @@ jobs:
       run:
         working-directory: tests-e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -85,7 +85,7 @@ jobs:
       - run: npm run a11y
       - name: Subir trazas y capturas del fallo
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: a11y-fallos
           path: |
@@ -106,8 +106,8 @@ jobs:
       run:
         working-directory: tests-e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -118,7 +118,7 @@ jobs:
       - run: npx playwright test --project=${{ matrix.browser }} --workers=1
       - name: Subir trazas, capturas y PDF del fallo
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-${{ matrix.browser }}-fallos
           path: |
