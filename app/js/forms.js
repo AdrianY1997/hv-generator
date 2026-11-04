@@ -182,8 +182,12 @@ export function fieldControl(field, value, onInput, ctx = {}) {
   const t = field.type;
   if (t === 'textarea') input = h('textarea', { ...attrs, class: 'mn-textarea', rows: 4 });
   else if (t === 'select') {
+    // Un valor guardado que no está entre las opciones (lo escribió otro formato con más opciones, docs/MODELOS.md) se muestra tal cual
+    // en vez de «Seleccione…»: así no parece vacío ni se pierde si la persona no lo cambia.
+    const foreign = value != null && value !== '' && !(field.options || []).some((o) => o.value === value);
     input = h('select', { ...attrs, class: 'mn-select' }, h('option', { value: '' }, 'Seleccione…'),
-      (field.options || []).map((o) => h('option', { value: o.value }, o.label)));
+      (field.options || []).map((o) => h('option', { value: o.value }, o.label)),
+      foreign ? h('option', { value: String(value) }, `${value} (de otro formato)`) : null);
   } else if (t === 'checkbox') input = h('input', { ...attrs, type: 'checkbox' });
   else input = h('input', { ...attrs, class: 'mn-input', type: t || 'text' });
 

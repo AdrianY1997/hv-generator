@@ -6,6 +6,17 @@
 
 const has = (v) => !(v == null || v === '' || v === false || (Array.isArray(v) && !v.length));
 
+/**
+ * ¿La plantilla incluye este campo? Su bandera propia manda; sin ella, un campo con `replaces` (docs/MODELOS.md) usa la del campo al que
+ * reemplaza (plantillas anteriores: desmarcar `experiencia.cargo` sigue ocultando la casilla «Cargo» de Minerva). Sin plantilla: sí.
+ */
+export function fieldIncluded(t, secId, f) {
+  if (!t) return true;
+  const fl = t.include?.fields, own = fl?.[`${secId}.${f?.id}`];
+  if (typeof own === 'boolean') return own;
+  return f?.replaces ? fl?.[`${secId}.${f.replaces}`] !== false : true;
+}
+
 /** Bandera explícita de la plantilla para un documento (true/false) o undefined si no la tiene. */
 export const docFlag = (t, id) => (typeof t?.include?.documents?.[id] === 'boolean' ? t.include.documents[id] : undefined);
 

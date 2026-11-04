@@ -9,15 +9,17 @@
 // El render reproduce docs/minerva.pdf (geometría en minerva-layout.js, generada por docs/design/minerva-extract.py).
 import { escapeHtml as esc } from '../ui.js';
 import layout from './minerva-layout.js';
-import { shownDocIds } from '../doc-sources.js';
+import { shownDocIds, registryDocuments } from '../doc-sources.js';
 import { docSelected, docsMissing, certGaps } from '../template-check.js';
 import { normalizeProfile, isAllowedImageType } from '../backup-validate.js';
 import { createVisibility, pruneProfile } from '../conditions.js';
 import { fitCapacity } from './minerva-fit.js';
 import { todayIso } from '../validators.js';
+import { deriveShared } from './shared-fields.js';
+import { serviceTime } from '../service-time.js';
+import { annexHtml, annexFlags, annexSummary, incFieldIn, continuation as kitContinuation } from './sheet-kit.js';
 const T = 'text';
 const sel = (arr) => arr.map((v) => (Array.isArray(v) ? { value: v[0], label: v[1] } : { value: v, label: v }));
-const doc = (id, label, hint = '') => ({ id, label, hint });
 const YN = sel([['Si', 'Sí'], ['No', 'No']]);
 const RBMB = sel([['R', 'Regular (R)'], ['B', 'Bien (B)'], ['MB', 'Muy bien (MB)']]);
 const yn = (id, label) => ({ id, label, type: 'select', options: YN });
@@ -59,10 +61,10 @@ const sections = [
     { id: 'nacionalidad', label: 'Nacionalidad', type: T },
     { id: 'sexo', label: 'Sexo', type: 'select', options: sel([['F', 'Femenino'], ['M', 'Masculino'], ['O', 'Otro']]) },
     { id: 'estadoCivil', label: 'Estado civil', type: 'select', options: sel(['Soltero(a)', 'Casado(a)', 'Unión libre', 'Separado(a)', 'Divorciado(a)', 'Viudo(a)']) },
-    { id: 'libretaMilitar', label: 'Libreta militar (número / clase / distrito)', type: T, certificate: true, validate: [{ rule: 'pattern', re: '\d{5,}', message: 'Incluye el número de la libreta (al menos 5 dígitos).' }], showIf: { field: 'sexo', not: 'F' } },
+    { id: 'libretaMilitar', label: 'Libreta militar (número / clase / distrito)', type: T, certificate: true, validate: [{ rule: 'pattern', re: '\\d{5,}', message: 'Incluye el número de la libreta (al menos 5 dígitos).' }], showIf: { field: 'sexo', not: 'F' } },
     { id: 'claseLibreta', label: 'Libreta militar: clase', type: 'select', options: sel(['Primera clase', 'Segunda clase']), showIf: { allOf: [{ field: 'sexo', not: 'F' }, { field: 'libretaMilitar', notEmpty: true }] } },
     { id: 'distritoMilitar', label: 'Libreta militar: distrito', type: T, showIf: { allOf: [{ field: 'sexo', not: 'F' }, { field: 'libretaMilitar', notEmpty: true }] } },
-    { id: 'licenciaConduccion', label: 'Licencia de conducción (categoría)', type: T, certificate: true, validate: [{ rule: 'pattern', re: '\b(A1|A2|B1|B2|B3|C1|C2|C3)\b', flags: 'i', message: 'No se reconoce la categoría: usa A1, A2, B1, B2, B3, C1, C2 o C3.' }] },
+    { id: 'licenciaConduccion', label: 'Licencia de conducción (categoría)', type: T, certificate: true, validate: [{ rule: 'pattern', re: '\\b(A1|A2|B1|B2|B3|C1|C2|C3)\\b', flags: 'i', message: 'No se reconoce la categoría: usa A1, A2, B1, B2, B3, C1, C2 o C3.' }] },
     { id: 'licenciaNumero', label: 'Licencia de conducción: número', type: T, validate: [{ rule: 'pattern', re: '^[A-Za-z0-9 .-]{5,20}$', message: 'El número de la licencia lleva entre 5 y 20 letras o dígitos.' }], showIf: { field: 'licenciaConduccion', notEmpty: true } },
     yn('tieneVehiculo', '¿Tiene vehículo?'),
     { id: 'tarjetaProfesional', label: 'Tarjeta profesional No.', type: T },
@@ -188,17 +190,18 @@ const sections = [
     { id: 'areas', label: 'Área(s) de la empresa en que se ha desempeñado', type: 'multiselect', options: opt(AREAS) },
     { id: 'areaOtras', label: 'Otras áreas (¿cuáles?)', type: T, showIf: { field: 'areas', includes: 'Otras áreas' } },
   ] },
-  { id: 'experiencia', title: 'VI. Experiencia laboral', repeatable: true, certificate: true, fields: [
+  // serviceTime (clave aditiva): Perfil muestra en vivo el tiempo servido calculado de cada empleo (service-time.js); el valor es el id del campo
+  // que, si se escribe, lo reemplaza al imprimir (true = solo informativo, sin campo propio).
+  { id: 'experiencia', title: 'VI. Experiencia laboral', repeatable: true, certificate: true, serviceTime: 'tiempoServido', fields: [
     { id: 'empresa', label: 'Empresa o entidad', type: T, required: true },
-    { id: 'cargo', label: 'Cargo', type: T, required: true },
     { id: 'direccion', label: 'Dirección de la empresa', type: T, validate: ['direccion'] },
     { id: 'fechaInicio', label: 'Fecha de ingreso', type: 'date', validate: ['notFuture', { rule: 'afterBirth', years: 14 }, 'noOverlap'] },
     { id: 'actual', label: 'Es mi trabajo actual', type: 'checkbox', hint: 'Oculta la fecha y el motivo de retiro' },
     { id: 'fechaFin', label: 'Fecha de retiro', type: 'date', validate: [{ rule: 'notBefore', other: 'fechaInicio', otherLabel: 'la fecha de ingreso' }, { rule: 'notFuture', level: 'warn' }], showIf: { field: 'actual', not: true } },
-    { id: 'tiempoServido', label: 'Total tiempo servido', type: T, hint: 'Si se deja vacío y hay ambas fechas se calcula' },
+    { id: 'tiempoServido', label: 'Total tiempo servido', type: T, hint: 'Se calcula solo con las fechas (hasta hoy si es tu trabajo actual). Escribe aquí solo si quieres imprimir otro valor.' },
     { id: 'sueldoInicial', label: 'Sueldo inicial ($)', type: T },
     { id: 'sueldoFinal', label: 'Sueldo final o actual ($)', type: T },
-    { id: 'cargosDesempenados', label: 'Cargo(s) desempeñado(s) por usted', type: T },
+    { id: 'cargosDesempenados', label: 'Cargo desempeñado por usted', type: T, hint: 'Tu cargo (o cargos) en esta empresa' },
     { id: 'funciones', label: 'Funciones realizadas', type: 'textarea' },
     { id: 'logros', label: 'Logros obtenidos', type: 'textarea' },
     { id: 'contratoTermino', label: 'Tipo de contrato: término', type: 'select', options: sel(['Indefinido', 'Fijo']) },
@@ -207,7 +210,11 @@ const sections = [
     { id: 'contratoOtro', label: 'Contrato otro: ¿cuál?', type: T, showIf: { field: 'contratoVinculacion', equals: 'Otro' } },
     { id: 'horario', label: 'Horario de trabajo', type: 'select', options: sel(['Tiempo completo', 'Medio tiempo', 'Por horas']) },
     { id: 'jornada', label: 'Jornada', type: 'select', options: sel(['Diurna', 'Nocturna', 'Otra jornada']) },
-    { id: 'jefe', label: 'Jefe inmediato', type: T },
+    { id: 'jefe', label: 'Nombre de su jefe inmediato', type: T },
+    // `replaces` (clave aditiva, docs/MODELOS.md): este campo ocupa en Minerva el lugar de `cargo` (casilla «Cargo» junto al jefe). Si está vacío se
+    // imprime el `cargo` de antes (perfiles anteriores: salen igual) y una plantilla sin bandera propia usa la de `experiencia.cargo`.
+    // `cargo` sigue en el perfil y lo usa el Formato Único («Cargo o contrato»: el cargo de la persona).
+    { id: 'cargoJefe', label: 'Cargo de su jefe inmediato', type: T, replaces: 'cargo', hint: 'El cargo de la persona a la que le reportabas (p. ej. Jefe de contabilidad). El tuyo va en «Cargo desempeñado por usted».' },
     { id: 'telefono', label: 'Teléfono de la empresa', type: 'tel', validate: ['telefono'] },
     { id: 'motivoRetiro', label: 'Motivo de retiro', type: T, showIf: { field: 'actual', not: true } },
   ] },
@@ -238,24 +245,9 @@ const sections = [
   ] },
 ];
 
-const documents = [
-  doc('cedula', 'Cédula de ciudadanía (ambas caras)', 'Escaneo legible, frente y reverso'),
-  doc('procuraduria', 'Antecedentes disciplinarios (Procuraduría)', 'Certificado vigente'),
-  doc('contraloria', 'Antecedentes fiscales (Contraloría)', 'Certificado vigente'),
-  doc('policia', 'Antecedentes judiciales (Policía Nacional)', 'Consulta con la cédula'),
-  doc('rnmc', 'Registro Nacional de Medidas Correctivas', 'Certificado de la Policía Nacional'),
-  doc('inhabilidades', 'Inhabilidades por delitos sexuales contra menores', 'Ley 1918 de 2018, Sistema de Consulta de Inhabilidades (lo consulta la entidad contratante)'),
-  doc('libreta', 'Libreta militar', 'Si aplica'),
-  doc('rut', 'RUT', 'Registro Único Tributario actualizado'),
-  doc('eps', 'Certificación de afiliación a EPS', 'ADRES o EPS'),
-  doc('pension', 'Certificación de fondo de pensión', ''),
-  doc('sisben', 'SISBEN', 'Si aplica'),
-  // Agregados con el registro de fuentes (docs/FUENTES-OFICIALES.md); no se muestran por defecto en Documentos.
-  doc('redam', 'REDAM (deudores alimentarios morosos)', 'Certificado con código y fecha "Válida hasta"'),
-  doc('bdme', 'BDME (deudores morosos del Estado)', 'Contaduría General de la Nación; si la convocatoria lo exige'),
-  doc('vigenciacedula', 'Certificado de vigencia de la cédula', 'Registraduría; si la convocatoria lo exige'),
-  doc('leyangel', 'Inhabilidades por delitos contra animales (Ley Ángel)', 'Solo si el cargo se relaciona con animales'),
-];
+// Lista de documentos de soporte: viene del registro único (doc-sources.js), que lleva etiquetas, pistas, base legal y vigencias.
+// Ids aditivos: nunca se renombran (los archivos viven en `doc:<id>`); el Formato Único usa estos mismos objetos.
+const documents = registryDocuments();
 
 
 // ---------- Render ----------
@@ -264,7 +256,7 @@ const has = (v) => !(v == null || v === '' || v === false || (Array.isArray(v) &
 
 const incSection = (t, id) => !t || t.include?.sections === undefined || t.include.sections[id] !== false;
 const incItem = (t, id) => !t || t.include?.items?.[id] !== false;
-const incField = (t, sec, f) => !t || t.include?.fields?.[`${sec}.${f}`] !== false;
+const incField = incFieldIn(secById); // con la bandera del campo que reemplaza (`replaces`): la misma regla del Formato Único (sheet-kit.js)
 const getFile = (files, id) => (files instanceof Map ? files.get(id) : files?.[id]);
 const isImg = (f) => isAllowedImageType(f?.meta?.type) && !!f.dataUrl;
 
@@ -286,9 +278,39 @@ const multi = (s) => esc(s).replace(/\r?\n/g, '<br>');
 const visibleFields = (sec, t) => sec.fields.filter((f) => f.type !== 'photo' && incField(t, sec.id, f.id));
 const itemsOf = (profile, id, t) => (Array.isArray(profile?.[id]) ? profile[id] : []).filter((it) => it && incItem(t, it.id));
 
+// Más reciente primero; el trabajo marcado «actual» va SIEMPRE en el primer bloque («Nombre de la última o actual empresa»). Misma regla que sheet-kit.js.
 function experienceOrder(a, b) {
+  const rank = (x) => (x.actual === true ? 2 : x.fechaFin ? 0 : 1);
   const end = (x) => x.fechaFin || '9999-99-99';
-  return end(b).localeCompare(end(a)) || (b.fechaInicio || '').localeCompare(a.fechaInicio || '');
+  return rank(b) - rank(a) || end(b).localeCompare(end(a)) || (b.fechaInicio || '').localeCompare(a.fechaInicio || '');
+}
+// Un registro sin ningún dato (se pulsó «Agregar» y no se escribió nada) no ocupa un bloque del formato: antes se ordenaba como «vigente»
+// (sin fecha de retiro) y dejaba en blanco el primer bloque de la hoja de experiencia.
+const filled = (sec) => (it) => !!it && sec.fields.some((f) => f.type !== 'photo' && has(it[f.id]));
+// Campos con `replaces`: vacíos, toman el valor del campo al que reemplazan (perfiles anteriores imprimen lo mismo que antes). Solo al leer.
+function withLegacy(P) {
+  let out = P;
+  for (const sec of sections) {
+    const fs = sec.fields.filter((f) => f.replaces);
+    if (!fs.length || P?.[sec.id] == null) continue;
+    const fill = (rec) => {
+      if (!rec || typeof rec !== 'object') return rec;
+      const add = fs.filter((f) => !has(rec[f.id]) && has(rec[f.replaces]));
+      return add.length ? { ...rec, ...Object.fromEntries(add.map((f) => [f.id, rec[f.replaces]])) } : rec;
+    };
+    if (out === P) out = { ...P };
+    out[sec.id] = Array.isArray(P[sec.id]) ? P[sec.id].map(fill) : fill(P[sec.id]);
+  }
+  return out;
+}
+// Tiempo servido de cada empleo: lo escrito a mano manda; si está vacío se calcula con las fechas (service-time.js). Solo al leer.
+function withServiceTime(P, today) {
+  if (!Array.isArray(P?.experiencia)) return P;
+  return { ...P, experiencia: P.experiencia.map((it) => {
+    if (!it || typeof it !== 'object' || has(it.tiempoServido)) return it;
+    const v = serviceTime(it, today);
+    return v ? { ...it, tiempoServido: v } : it;
+  }) };
 }
 
 /** Certificados incluidos: [{title, id, file}] */
@@ -328,7 +350,7 @@ function docList(profile, t, files) {
 
 /** Perfil normalizado (N), copia solo con lo que aplica (P: sin campos ni secciones ocultos) y los ocultos de secciones simples (off). */
 function prep(profile) {
-  const N = normalizeProfile(profile, sections);
+  const N = deriveShared(normalizeProfile(profile, sections)); // datos escritos en otro formato (docs/MODELOS.md): solo rellena lo vacío
   const { profile: P, off } = pruneProfile(sections, N);
   return { N, P, off };
 }
@@ -360,10 +382,12 @@ function missing(profile, template, files) {
   return out;
 }
 
-function annexes(profile, t, files, off) {
-  const o = t?.options || {}, a = [];
-  if (!t || o.attachCertificates) a.push(...certList(profile, t, files, off));
-  if (t && o.attachDocuments) a.push(...docList(profile, t, files));
+// Sin plantilla van certificados Y documentos (los mostrados en Documentos con archivo, cédula primero); con plantilla, sus opciones.
+// `ov` = lo que la persona activó o desactivó en la Vista previa para esta vista (sheet-kit.js, annexFlags).
+function annexes(profile, t, files, off, ov) {
+  const on = annexFlags(t, ov), a = [];
+  if (on.certificates) a.push(...certList(profile, t, files, off));
+  if (on.documents) a.push(...docList(profile, t, files));
   return a;
 }
 
@@ -379,7 +403,7 @@ const ROW = {
   prim: ['t22', 't23', 't24', 't25', 't26'], bach: ['t27', 't28', 't29', 't30', 't31'], tec: ['t52', 't51', 't50', 't49', 't33'],
   tecno: ['t34', 't45', 't46', 't47', 't48'], prof: ['t44', 't43', 't42', 't41', 't35'], post: ['t36', 't37', 't38', 't39', 't40'],
 };
-const MODAL = { Técnica: 'tec', Tecnológica: 'tecno', Profesional: 'prof', Especialización: 'post', Maestría: 'post', Doctorado: 'post' };
+const MODAL = { Técnica: 'tec', Tecnológica: 'tecno', Profesional: 'prof', Especialización: 'post', Maestría: 'post', Doctorado: 'post', 'Tecnológica especializada': 'tecno' }; // la última viene del Formato Único
 const MODAL_CHK = { tec: 'c5', tecno: 'c6', prof: 'c7' };
 const SIST = [['t64', 'c17', 'c18', 'c19'], ['t65', 'c22', 'c20', 'c21'], ['t67', 'c28', 'c26', 'c25'], ['t66', 'c23', 'c27', 'c24']];
 const IDIO = [
@@ -430,7 +454,7 @@ const FIT = {
   'estudiosActuales.tipoEstudios': ln(1, 't60'), 'estudiosActuales.duracion': ln(1, 't61'), 'estudiosActuales.anioSemestre': ln(1, 't62'), 'estudiosActuales.institucion': ln(1, 't63'),
   'sistemas.programa': ln(1, ...SIST.map((x) => x[0])), 'idiomas.idioma': ln(1, ...IDIO.map((x) => x.n)),
   'trayectoria.sectorIndustriaOtros': ln(1, 't70'), 'trayectoria.sectorOtros': ln(1, 't72'), 'trayectoria.areaOtras': ln(1, 't74'),
-  ...Object.fromEntries(Object.entries({ empresa: 'e', direccion: 'dir', telefono: 'tel', cargo: 'car', jefe: 'jef', tiempoServido: 'tmp', sueldoInicial: 'si', sueldoFinal: 'sf', cargosDesempenados: 'cgs', contratoDuracion: 'dur', contratoOtro: 'cua', motivoRetiro: 'mot' })
+  ...Object.fromEntries(Object.entries({ empresa: 'e', direccion: 'dir', telefono: 'tel', cargoJefe: 'car', jefe: 'jef', tiempoServido: 'tmp', sueldoInicial: 'si', sueldoFinal: 'sf', cargosDesempenados: 'cgs', contratoDuracion: 'dur', contratoOtro: 'cua', motivoRetiro: 'mot' })
     .map(([f, k]) => ['experiencia.' + f, ln(2, ...EXP.map((x) => x[k]))])),
   'experiencia.funciones': { mode: 'rows', boxes: EXP.map((x) => [2, x.fun]) }, 'experiencia.logros': { mode: 'rows', boxes: EXP.map((x) => [2, [x.log]]) },
   'seguridadSocial.epsNombre': ln(2, SS[0].cua), 'seguridadSocial.pensionNombre': ln(2, SS[1].cua), 'seguridadSocial.cesantiasNombre': ln(2, SS[2].cua),
@@ -460,7 +484,7 @@ const num = (v) => String(+v.toFixed(2));
 function renderForm(P, t, files) {
   const o = t?.options || {};
   const get = (sec, id) => (incSection(t, sec) && incField(t, sec, id) ? P?.[sec]?.[id] : undefined);
-  const items = (sec) => (incSection(t, sec) ? itemsOf(P, sec, t) : []);
+  const items = (sec) => (incSection(t, sec) ? itemsOf(P, sec, t).filter(filled(secById[sec])) : []);
   const fv = (sec, it, id) => (incField(t, sec, id) ? it?.[id] : undefined);
   const pages = layout.pages.map((pg) => ({ pg, html: [], marks: [] }));
   const W = (i, k) => pages[i].pg.w[k];
@@ -636,15 +660,9 @@ function renderForm(P, t, files) {
   exp.slice(0, 3).forEach((it, n) => {
     const k = EXP[n], g = (id) => fv('experiencia', it, id);
     text(2, k.e, g('empresa')); text(2, k.dir, g('direccion')); text(2, k.tel, g('telefono'));
-    text(2, k.car, g('cargo')); text(2, k.jef, g('jefe'));
+    text(2, k.car, g('cargoJefe')); text(2, k.jef, g('jefe')); // cargoJefe o, si está vacío, el `cargo` de antes (withLegacy)
     date(2, k.ini, g('fechaInicio')); date(2, k.fin, g('fechaFin'));
-    let tmp = g('tiempoServido');
-    const fin = g('fechaFin') || (g('actual') === true ? todayIso() : ''); // trabajo actual: el tiempo servido corre hasta hoy
-    if (!has(tmp) && g('fechaInicio') && fin) {
-      const a = ymd(g('fechaInicio')), b = ymd(fin);
-      const m = Math.max(0, (b[2] - a[2]) * 12 + (b[1] - a[1]) + (b[0] >= a[0] ? 0 : -1));
-      tmp = [m >= 12 ? `${Math.floor(m / 12)} año${m >= 24 ? 's' : ''}` : '', m % 12 ? `${m % 12} mes${m % 12 > 1 ? 'es' : ''}` : ''].filter(Boolean).join(' ') || '0 meses';
-    }
+    const tmp = g('tiempoServido'); // escrito a mano o calculado con las fechas (withServiceTime: trabajo actual hasta hoy)
     text(2, k.tmp, tmp); text(2, k.si, g('sueldoInicial')); text(2, k.sf, g('sueldoFinal')); text(2, k.cgs, g('cargosDesempenados'));
     rows(2, k.fun, g('funciones')); rows(2, [k.log], g('logros'));
     mark(2, k.ind, g('contratoTermino') === 'Indefinido'); mark(2, k.fij, g('contratoTermino') === 'Fijo'); text(2, k.dur, g('contratoDuracion'));
@@ -717,7 +735,7 @@ function a11yText(P, t, overflow) {
     if (!incSection(t, sec.id)) continue;
     const fs = visibleFields(sec, t);
     if (sec.repeatable) {
-      const list = itemsOf(P, sec.id, t);
+      const list = itemsOf(P, sec.id, t).filter(filled(sec));
       if (sec.id === 'experiencia') list.sort(experienceOrder);
       list.filter((it) => !spill.has(it)).forEach((it, n, all) => {
         const d = dl(fs, it);
@@ -739,34 +757,15 @@ const sheet = (i, { pg, html, marks }) => `<div class="hv-sheet" aria-hidden="tr
   + `<svg class="mv-bg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}pt" height="${layout.height}pt" aria-hidden="true" focusable="false">${markShadowText(pg.svg)}</svg>`
   + `${html.join('')}<svg class="mv-ov" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}pt" height="${layout.height}pt" aria-hidden="true" focusable="false">${marks.join('')}</svg></div></div>`;
 
-function continuation(overflow, t) {
-  if (!overflow.length) return '';
-  const body = overflow.map(({ sec, list }) => {
-    const s = secById[sec], fs = visibleFields(s, t);
-    if (!fs.length) return '';
-    if (fs.length > 7) { // muchos campos: una ficha (campo / valor) por registro
-      return `<section class="mv-cs"><h2>${esc(s.title)} (continuación)</h2>${list.map((it) => `<table class="hv-tbl hv-card"><tbody>${
-        fs.filter((f) => has(it[f.id])).map((f) => `<tr><th>${esc(f.label)}</th><td>${multi(show(f, it[f.id]))}</td></tr>`).join('')}</tbody></table>`).join('')}</section>`;
-    }
-    return `<section class="mv-cs"><h2>${esc(s.title)} (continuación)</h2><table class="hv-tbl"><thead><tr>${fs.map((f) => `<th>${esc(f.label)}</th>`).join('')}</tr></thead><tbody>${
-      list.map((it) => `<tr>${fs.map((f) => `<td>${multi(show(f, it[f.id]))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
-  }).join('');
-  return `<div class="hv-page hv-cont"><h1>HOJA DE VIDA <small>información adicional</small></h1><p>Registros que exceden el espacio previsto en el formato (el formato indica utilizar una hoja por separado).</p>${body}</div>`;
-}
+const continuation = (overflow, t) => kitContinuation(secById, overflow, t, { title: 'HOJA DE VIDA <small>información adicional</small>', note: 'Registros que exceden el espacio previsto en el formato (el formato indica utilizar una hoja por separado).' });
 
-function render(profile, template, files) {
-  const t = template || null, { P, off } = prep(profile); // solo se imprime lo que aplica según las respuestas (js/conditions.js)
+/** render(profile, template, files, opts) · opts.annex = { certificates?, documents? } (interruptores de la Vista previa, ver annexFlags). */
+function render(profile, template, files, opts = {}) {
+  const t = template || null, { P: P0, off } = prep(profile); // solo se imprime lo que aplica según las respuestas (js/conditions.js)
+  const P = withServiceTime(withLegacy(P0), todayIso()); // el mismo P para hojas, lectura lineal y continuación (identidad de registros)
   const { pages, overflow } = renderForm(P, t, files);
   let html = a11yText(P, t, overflow) + pages.map((p, i) => sheet(i, p)).join('') + continuation(overflow, t);
-  const loose = [];
-  for (const a of annexes(P, t, files, off)) {
-    if (isImg(a.file)) html += `<div class="hv-page hv-annex"><h2>Anexo · ${esc(a.title)}</h2><div class="hv-fit"><img src="${esc(a.file.dataUrl)}" alt="${esc(a.title)}"></div></div>`;
-    else loose.push(a);
-  }
-  if (loose.length) {
-    html += `<div class="hv-page hv-annex"><h2>Anexos · PDF no impresos</h2><p>Los siguientes archivos son PDF y no salen en esta impresión. Para tener la HV y estos anexos en un solo archivo use «Descargar paquete PDF» en Vista previa; si imprime, adjúntelos por separado:</p><ul>${
-      loose.map((a) => `<li>${esc(a.title)} <span class="hv-l">— ${esc(a.file.meta?.name || a.id)}</span></li>`).join('')}</ul></div>`;
-  }
+  html += annexHtml(annexes(P, t, files, off, opts.annex)); // imágenes, páginas de PDF convertidas y aviso de lo que no sale (sheet-kit.js)
   return `<div class="hv-doc">${html}</div>`;
 }
 
@@ -783,21 +782,20 @@ export default {
   /** Faltantes (campos obligatorios y documentos) para la plantilla dada: string[] */
   missing,
   /** Ids de archivo cuyo binario necesita render() para esta plantilla: foto (si se muestra) y anexos incluidos. Permite carga perezosa. */
-  fileIds(profile, template) {
+  fileIds(profile, template, opts = {}) {
     const t = template || null, { P, off } = prep(profile);
-    const ids = annexes(P, t, ANY_FILE, off).map((a) => a.id);
+    const ids = annexes(P, t, ANY_FILE, off, opts.annex).map((a) => a.id);
     if (!t || t.options?.showPhoto !== false) ids.push('photo');
     return ids;
   },
   /** Anexos en orden de aparición: [{ title, id, file:{meta} }] (certificados y luego documentos, CC primero). Lo usa el paquete PDF. */
-  annexList(profile, template, files) {
+  annexList(profile, template, files, opts = {}) {
     const { P, off } = prep(profile);
-    return annexes(P, template || null, files, off);
+    return annexes(P, template || null, files, off, opts.annex);
   },
-  /** Conteo de anexos: { images, others } */
-  annexInfo(profile, template, files) {
+  /** Resumen de anexos impresos: { items, pages, images, pdfs, pdfPages, loose, truncated, others } (sheet-kit.js, annexSummary). */
+  annexInfo(profile, template, files, opts = {}) {
     const { P, off } = prep(profile);
-    const a = annexes(P, template || null, files, off);
-    return { images: a.filter((x) => isImg(x.file)).length, others: a.filter((x) => !isImg(x.file)).length };
+    return annexSummary(annexes(P, template || null, files, off, opts.annex));
   },
 };

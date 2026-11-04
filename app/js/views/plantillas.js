@@ -3,8 +3,9 @@ import { newTemplate, templateMaxAge } from '../template-model.js';
 import { uid, certFileId, nextId } from '../forms.js';
 import { SOURCES, shownDocIds } from '../doc-sources.js';
 import { docVigencia, vigenciaWarning, validMaxAge } from '../doc-parse.js';
-import { docSelected, docFlag, certGaps } from '../template-check.js';
+import { docSelected, docFlag, certGaps, fieldIncluded } from '../template-check.js';
 import { pruneProfile, createVisibility } from '../conditions.js';
+import { registry, templatesFor, templateModelId } from '../models/index.js';
 
 const has = (v) => v != null && v !== '' && v !== false;
 const on = (map, k) => map?.[k] !== false; // ausente = incluido
@@ -75,7 +76,10 @@ export function mount(el, ctx) {
   // ---------- Lista ----------
   function renderList() {
     draft = null;
-    const list = store.getTemplates();
+    // Cada plantilla es de un formato (template.modelId): aquí solo las del formato activo; las demás se ven al cambiar el selector del encabezado.
+    const all = store.getTemplates(), list = templatesFor(all, model.id);
+    const others = all.filter((t) => templateModelId(t) !== model.id);
+    const otherNames = [...new Set(others.map((t) => registry[templateModelId(t)]?.name).filter(Boolean))];
     const q = (t) => encodeURIComponent(t.id);
     const cards = list.length
       ? h('ul', { class: 'tpl-list' }, list.map((t) => {
@@ -108,6 +112,7 @@ export function mount(el, ctx) {
       }),
       h('div', { class: 'tpl-body' },
         !hasAnyData() && list.length ? h('p', { class: 'mn-help' }, 'Tu perfil aún no tiene datos. ', h('a', { href: '#/perfil' }, 'Completa tu perfil')) : null,
+        others.length ? h('p', { class: 'mn-help tpl-others' }, `Formato activo: ${model.name}. Hay ${others.length} plantilla(s) de otro formato${otherNames.length ? ' (' + otherNames.join(', ') + ')' : ''}: elígelo en el selector «Modelo» del encabezado para verlas.`) : null,
         cards));
   }
 
@@ -155,7 +160,7 @@ export function mount(el, ctx) {
       const c = counts(t), w = warnings(t);
       summary.replaceChildren(
         h('span', { class: 'mn-eyebrow' }, 'Resumen'),
-        h('p', {}, `${c.secs} secciones · ${c.items} registros · ${c.dcount} documentos${t.options.showPhoto ? ' · con foto' : ''}`),
+        h('p', {}, `${c.secs} secciones · ${c.items} registros · ${c.dcount} documentos${t.options.showPhoto && model.features?.photo !== false ? ' · con foto' : ''}`),
         ...(w.length ? [h('ul', { class: 'tpl-warn' }, w.map((x) => h('li', {}, icon('alert', 14), 'Advertencia: ' + x)))] : []));
     };
 
@@ -200,7 +205,7 @@ export function mount(el, ctx) {
         const naNow = (f) => !!f.showIf && (s.repeatable ? itemsOf(s).length > 0 && itemsOf(s).every((it) => !V.fieldVisible(s, it, f)) : !V.fieldVisible(s, profile()[s.id] || {}, f));
         for (const f of fields) {
           const key = `${s.id}.${f.id}`;
-          const b = checkbox(f.label, on(t.include.fields, key), (v) => { t.include.fields[key] = v; });
+          const b = checkbox(f.label, fieldIncluded(t, s.id, f), (v) => { t.include.fields[key] = v; });
           b.key = key; fieldBoxes.push(b);
           const na = naNow(f);
           const noCert = !na && f.certificate && data && has(data[f.id]) && !fileIds.has(certFileId(s, null, f));
@@ -264,7 +269,7 @@ export function mount(el, ctx) {
     const maxField = h('div', { class: 'mn-field field wide' },
       h('label', { for: maxId, class: 'mn-label' }, 'Antigüedad máxima de los documentos con vigencia'),
       h('div', { class: 'tpl-maxage' }, maxSel, maxNum),
-      h('p', { class: 'mn-help', id: maxId + '-help' }, 'Úsalo si quien recibe la hoja de vida pide, por ejemplo, antecedentes de máximo 30 días. Se cuenta desde la fecha de expedición. En judiciales y RNMC reemplaza los 30 días de referencia; en disciplinarios, fiscales y REDAM solo puede acortar la vigencia oficial. No afecta a documentos sin vigencia, como la cédula. La vigencia real la define la entidad.'),
+      h('p', { class: 'mn-help', id: maxId + '-help' }, 'Úsalo si quien recibe la hoja de vida pide, por ejemplo, antecedentes de máximo 30 días. Se cuenta desde la fecha de expedición. En judiciales, RNMC y fiscales reemplaza los días de referencia; en disciplinarios y REDAM solo puede acortar el límite de la norma citada (no lo alarga; la vista previa y Documentos lo dicen). No afecta a documentos sin vigencia, como la cédula. La vigencia real la define la entidad.'),
       maxErr);
 
     const optBox = (key, label) => checkbox(label, t.options[key], (v) => { t.options[key] = v; }).el;
@@ -277,7 +282,7 @@ export function mount(el, ctx) {
       for (const s of sections) {
         t.include.sections[s.id] = on(t.include.sections, s.id);
         for (const it of itemsOf(s)) t.include.items[it.id] = on(t.include.items, it.id);
-        for (const f of listFields(s)) t.include.fields[`${s.id}.${f.id}`] = on(t.include.fields, `${s.id}.${f.id}`);
+        for (const f of listFields(s)) t.include.fields[`${s.id}.${f.id}`] = fieldIncluded(t, s.id, f);
       }
       const sh = shownSet();
       for (const d of allDocs) t.include.documents[d.id] = docSelected(t, d.id, sh);
@@ -299,11 +304,12 @@ export function mount(el, ctx) {
         secTitle('02', 'Documentos adjuntos'), h('section', { class: 'mn-card' }, docList),
         secTitle('03', 'Opciones'),
         h('section', { class: 'mn-card tpl-opts' },
-          optBox('showPhoto', 'Mostrar fotografía'),
+          // Opciones que el formato no tiene (el Formato Único no lleva foto ni objetivo: model.features) no se ofrecen.
+          model.features?.photo === false ? null : optBox('showPhoto', 'Mostrar fotografía'),
           optBox('attachCertificates', 'Adjuntar certificados'),
           optBox('attachDocuments', 'Adjuntar documentos'),
           maxField,
-          h('div', { class: 'mn-field field wide' }, h('label', { for: 'tpl-obj', class: 'mn-label' }, 'Objetivo / perfil (sustituye al perfil profesional)'), objective)),
+          model.features?.objective === false ? null : h('div', { class: 'mn-field field wide' }, h('label', { for: 'tpl-obj', class: 'mn-label' }, 'Objetivo / perfil (sustituye al perfil profesional)'), objective)),
         summary,
         h('div', { class: 'tpl-actions sticky' },
           h('button', { type: 'submit', class: 'mn-btn mn-btn--primary' }, 'Guardar plantilla'),

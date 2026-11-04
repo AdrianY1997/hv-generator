@@ -2,10 +2,13 @@ import { h, icon, pageHead, emptyState } from '../ui.js';
 import { fieldControl, fileSlot, certFileId, uid, urlBag, nextId, ACCEPT_IMAGES } from '../forms.js';
 import { createVisibility, refsOf } from '../conditions.js';
 import { normalizeProfile } from '../backup-validate.js';
+import { deriveShared, derivedValue } from '../models/shared-fields.js';
+import { serviceTime } from '../service-time.js';
+import { todayIso } from '../validators.js';
 
 const isEmptyVal = (v) => v == null || v === '' || v === false;
-// Los títulos del schema llevan el número romano del formato oficial (I., IV., ...): en pantalla se numeran 01, 02, ...
-const plain = (t) => t.replace(/^[IVXL]+\.\s+/, '');
+// Los títulos del schema llevan el número del formato oficial (I., IV., ... en Minerva; 1., 2., ... en el Formato Único): en pantalla se numeran 01, 02, ...
+const plain = (t) => t.replace(/^(?:[IVXL]+|\d+)\.\s+/, '');
 const num = (i) => String(i + 1).padStart(2, '0');
 const ADD = { superior: 'Agregar estudio', cursos: 'Agregar curso', sistemas: 'Agregar conocimiento', idiomas: 'Agregar idioma', experiencia: 'Agregar experiencia', referencias: 'Agregar referencia', hermanos: 'Agregar hermano o hermana' };
 
@@ -63,7 +66,7 @@ export function mount(el, ctx) {
     if (!V.sectionVisible(sec)) return 0;
     const pending = (d) => req.filter((f) => V.fieldVisible(sec, d, f) && isEmptyVal(d[f.id])).length;
     if (sec.repeatable) return (profile[sec.id] || []).reduce((n, it) => n + pending(it), 0);
-    return pending(profile[sec.id] || {});
+    return pending(deriveShared(profile)[sec.id] || {}); // un dato escrito en otro formato (p. ej. «Apellidos» de Minerva) cuenta como lleno
   }
   function updateNav() {
     const V = createVisibility(sections, profile);
@@ -121,6 +124,7 @@ export function mount(el, ctx) {
     // Reglas `validate` del schema: ven los demás campos del registro y el resto del perfil (p. ej. fecha de nacimiento). Nunca bloquean el guardado.
     const vctx = { get: (id) => data[id], root: (s, f) => profile[s]?.[f], others: sec.repeatable ? () => (Array.isArray(profile[sec.id]) ? profile[sec.id] : []).filter((r) => r !== data) : undefined };
     const note = h('p', { class: 'cond-note mn-help' });
+    let svc = null; // tiempo servido calculado (sección con `serviceTime`): se actualiza al escribir las fechas
     // Campos condicionales (showIf): se ocultan con `hidden` (salen del orden de tabulación y del árbol de accesibilidad), sin perder su valor.
     function applyConditions(origin, announce) {
       const V = createVisibility(sections, profile);
@@ -150,9 +154,16 @@ export function mount(el, ctx) {
       const c = fieldControl(f, data[f.id], (v) => {
         data[f.id] = v; if (item) item.updatedAt = new Date().toISOString(); touch(sec.id);
         if (entries.some((e) => e.f.showIf)) applyConditions(c, true);
+        svc?.();
         for (const o of ctrls) if (o !== c && !o.el.closest('[hidden]')) o.revalidate?.();
       }, fit ? { ...vctx, fit } : vctx);
       ctrls.push(c);
+      // Dato equivalente escrito en otro formato (docs/MODELOS.md): se muestra como marcador y es lo que se imprime si el campo queda vacío.
+      const dv = !item && c.input?.tagName !== 'SELECT' && f.type !== 'checkbox' ? derivedValue(profile, sec.id, f.id) : '';
+      if (dv) c.input.placeholder = `Se usará: ${dv}`;
+      // Campo que reemplaza a otro en este modelo (`replaces`, p. ej. Minerva: cargoJefe en lugar de cargo): si está vacío se imprime el dato anterior.
+      const old = item && f.replaces && isEmptyVal(data[f.id]) && typeof data[f.replaces] === 'string' && data[f.replaces].trim() ? data[f.replaces].trim() : '';
+      if (old && c.input) c.input.placeholder = `Se usará: ${old} (dato anterior)`;
       let wrap = c.el;
       if (f.certificate && !sec.repeatable) { wrap = h('div', { class: 'field-with-cert' }, c.el, certSlot(sec, item, f).el); grid.append(wrap); }
       else grid.append(c.el);
@@ -173,7 +184,32 @@ export function mount(el, ctx) {
       (src.c.el.tagName === 'FIELDSET' ? src.c.el : src.c.input).setAttribute('aria-controls', ids.join(' '));
     }
     if (entries.some((e) => e.f.showIf)) { grid.append(note); applyConditions(null, false); }
+    if (sec.serviceTime && item) svc = serviceTimeBox(entries, data, typeof sec.serviceTime === 'string' ? sec.serviceTime : null, grid);
     return grid;
+  }
+
+  // Tiempo servido de un empleo, calculado con las fechas (service-time.js) y mostrado en vivo, de solo lectura. `manualId`: campo que, si se
+  // escribe, reemplaza al calculado al imprimir (Minerva: «Total tiempo servido»; su marcador muestra el calculado). Devuelve la función que lo refresca.
+  function serviceTimeBox(entries, data, manualId, grid) {
+    const lid = nextId('svc');
+    const out = h('output', { class: 'svc-time__v', 'aria-labelledby': lid, 'aria-live': 'polite' });
+    const help = h('p', { class: 'mn-help hint svc-time__n' });
+    const box = h('div', { class: 'mn-field field svc-time' }, h('span', { class: 'mn-label', id: lid }, 'Tiempo servido (calculado)'), out, help);
+    const at = (id) => entries.find((e) => e.f.id === id);
+    const anchor = at(manualId) || at('fechaFin') || at('fechaInicio');
+    if (anchor) anchor.wrap.after(box); else grid.append(box);
+    const manual = manualId ? at(manualId) : null;
+    const refresh = () => {
+      const v = serviceTime(data, todayIso());
+      out.textContent = v || 'Sin calcular';
+      help.textContent = !v ? 'Escribe la fecha de ingreso y la de retiro (o marca que es tu trabajo actual) y se calcula solo.'
+        : manual && !isEmptyVal(data[manualId]) ? `Se imprimirá lo que escribiste en «${manual.f.label}»; bórralo para imprimir el calculado.`
+        : manual ? `Es lo que se imprime en «${manual.f.label}». Cuenta meses completos, con las dos fechas incluidas.`
+        : 'Informativo: este formato no lo pide por empleo (el total va en «Tiempo total de experiencia»). Cuenta meses completos, con las dos fechas incluidas.';
+      if (manual?.c.input) manual.c.input.placeholder = v ? `Se calculará: ${v}` : '';
+    };
+    refresh();
+    return refresh;
   }
 
   function renderPanel() {
