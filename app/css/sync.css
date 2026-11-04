@@ -1,0 +1,20 @@
+/* Sincronización entre equipos (G04, js/sync/sync-ui.js). Reutiliza .mn-* (tokens.css), .aj-* (styles.css) e .imp-* (import-dialog.css). */
+.sy-form{display:grid;gap:var(--space-3)}
+.sy-form .imp-pass{margin-top:0}
+.sy-sub{display:grid;gap:var(--space-2);padding-left:var(--space-4);border-left:2px solid var(--color-line)}
+.sy-sub .mn-field{gap:var(--space-1)}
+.sy-sub a{overflow-wrap:anywhere}
+.sy-status{font-weight:500}
+.sy-alert{display:flex;gap:var(--space-2);align-items:flex-start}
+.sy-alert svg{flex:none;width:1.25em;height:1.25em;margin-top:.1em}
+.sy-connected{display:grid;gap:var(--space-3)}
+.sy-connected>*{margin:0}
+.sy-info dd{overflow-wrap:anywhere}
+.sy-unlock{padding:var(--space-3) var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-md,6px)}
+.sy-adv,.sy-skip{display:grid;gap:var(--space-2)}
+.sy-adv>summary,.sy-skip>summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.sy-adv>*+*,.sy-skip>*+*{margin-top:var(--space-2)}
+.sy-skip ul{margin:0;padding-left:var(--space-5)}
+.sy-field{display:grid;gap:var(--space-1);max-width:22rem}
+.sy-num{max-width:8rem}
+@media (max-width:30rem){.sy-sub{padding-left:var(--space-3)}.sy-adv .aj-actions .mn-btn{width:100%;justify-content:center}}

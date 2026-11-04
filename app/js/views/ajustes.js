@@ -1,11 +1,12 @@
 import { h, icon, pageHead, toast } from '../ui.js';
 import { certFileId, fmtSize } from '../forms.js';
 import { referencedFileIds, findOrphans } from '../orphans.js';
+import { syncCard } from '../sync/sync-ui.js';
 
 const DAY = 86400000;
 let dlgId = 0;
 
-/** Vista "Ajustes": privacidad, almacenamiento, respaldo, archivos huérfanos y borrado de datos (G04, G05, G11). */
+/** Vista "Ajustes": privacidad, almacenamiento, respaldo, sincronización, archivos huérfanos y borrado de datos (G04, G05, G11). */
 export function mount(el, ctx) {
   const { model, store } = ctx;
   let alive = true;
@@ -14,7 +15,7 @@ export function mount(el, ctx) {
   const privacy = h('section', { class: 'mn-card aj-card', 'aria-labelledby': 'aj-priv' },
     h('h2', { id: 'aj-priv' }, 'Privacidad y tus datos'),
     h('ul', { class: 'aj-list' },
-      h('li', {}, 'Todo lo que escribes y subes (cédula, antecedentes, fotografía, certificados) se guarda solo en este navegador. La app no envía nada a ningún servidor.'),
+      h('li', {}, 'Todo lo que escribes y subes (cédula, antecedentes, fotografía, certificados) se guarda solo en este navegador. La app no envía nada a ningún servidor, salvo que actives la sincronización (abajo): entonces sube una copia cifrada en este equipo con tu contraseña, ilegible para tu nube o GitHub.'),
       h('li', {}, 'No está cifrado: en un equipo compartido, otra persona con acceso a este navegador podría verlo. Borra tus datos al terminar.'),
       h('li', {}, 'Si borras los datos del sitio, usas una ventana privada o cambias de equipo, se pierde todo. Descarga un respaldo con frecuencia y guárdalo en un lugar seguro (el respaldo va sin cifrar salvo que le pongas contraseña al descargarlo).')));
 
@@ -157,8 +158,8 @@ export function mount(el, ctx) {
     go.addEventListener('click', async () => {
       if (input.value.trim().toUpperCase() !== 'BORRAR') return;
       go.disabled = true;
-      const ok = await store.wipeAll();
-      if (!ok) { msg.replaceChildren(icon('alert'), 'No se pudieron borrar todos los archivos. Cierra otras pestañas de la app e inténtalo de nuevo.'); go.disabled = false; return; }
+      const res = await store.wipeAll();
+      if (!res.ok) { msg.replaceChildren(icon('alert'), `No se pudo borrar todo. Sigue en este navegador: ${res.remaining.join('; ')}. Cierra las otras pestañas de la app e inténtalo de nuevo.`); go.disabled = false; return; }
       close();
       location.hash = '#/perfil';
       location.reload();
@@ -175,10 +176,13 @@ export function mount(el, ctx) {
     input.focus();
   }
 
+  // ---------- Sincronización entre equipos (G04): js/sync/sync-ui.js ----------
+  const syncUi = syncCard(store);
+
   el.replaceChildren(
-    pageHead({ eyebrow: 'Ajustes', title: 'Tus datos en este equipo', text: 'Privacidad, espacio disponible, respaldo y limpieza. Todo ocurre en este navegador.' }),
-    h('div', { class: 'aj-grid' }, privacy, storage, backup, orphans, danger));
+    pageHead({ eyebrow: 'Ajustes', title: 'Tus datos en este equipo', text: 'Privacidad, espacio disponible, respaldo, sincronización y limpieza.' }),
+    h('div', { class: 'aj-grid' }, privacy, storage, backup, syncUi.el, orphans, danger));
   paintStorage(); paintBackup();
   const unsub = store.subscribe((e) => { if (e.type === 'files' || e.type === 'all') paintStorage(); });
-  return () => { alive = false; unsub(); document.querySelectorAll('dialog.mn-dialog[aria-labelledby^="wipe-t-"]').forEach((d) => d.remove()); };
+  return () => { alive = false; unsub(); syncUi.destroy(); document.querySelectorAll('dialog.mn-dialog[aria-labelledby^="wipe-t-"]').forEach((d) => d.remove()); };
 }

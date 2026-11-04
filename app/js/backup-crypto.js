@@ -66,6 +66,10 @@ export function isEncryptedEnvelope(x) {
 }
 
 const aadOf = (e) => enc.encode(JSON.stringify([e.app, e.format, e.v, e.cipher, e.kdf.name, e.kdf.hash, e.kdf.iterations]));
+/** Cabecera de un sobre de la versión actual. La usa js/sync/sync-crypto.js para producir sobres idénticos con una clave ya derivada. */
+export const envelopeHead = (iterations = KDF_ITERATIONS) => ({ app: 'hv-minerva', format: ENC_FORMAT, v: ENC_VERSION, cipher: 'AES-256-GCM', kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations } });
+/** Datos autenticados adicionales (AAD) de un sobre: su cabecera serializada (misma función que usan encryptBackup/decryptBackup). */
+export const envelopeAad = (e) => aadOf(e);
 
 /**
  * Valida el sobre SIN tocar la contraseña ni derivar nada. {ok:true, salt, iv, data} | {ok:false, code, error}.
@@ -119,7 +123,7 @@ export async function encryptBackup(backup, passphrase, opts = {}) {
   const plain = enc.encode(typeof backup === 'string' ? backup : JSON.stringify(backup));
   if (plain.length > MAX_PLAINTEXT_BYTES) throw new CryptoBackupError('size', `El respaldo pesa más de ${MAX_PLAINTEXT_BYTES / 1048576} MB y no se puede cifrar.`);
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES)), iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-  const head = { app: 'hv-minerva', format: ENC_FORMAT, v: ENC_VERSION, cipher: 'AES-256-GCM', kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations } };
+  const head = envelopeHead(iterations);
   const key = await deriveKey(pass, salt, iterations);
   const ct = new Uint8Array(await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: aadOf(head), tagLength: 128 }, key, plain));
   return { ...head, salt: toB64(salt), iv: toB64(iv), ciphertext: toB64(ct) };
