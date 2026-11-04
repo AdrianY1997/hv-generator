@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseDate, analyzeText, computeVigencia, docVigencia, summarizeVigencia, addDays, extractCedulas, cedulaMatch, normalizeText, extractState, pickPages, pageCharCap } from '../js/doc-parse.js';
-import { SOURCES, shownDocIds, DEFAULT_SHOWN } from '../js/doc-sources.js';
+import { SOURCES, shownDocIds, DEFAULT_SHOWN, LEGACY_DEFAULT_SHOWN } from '../js/doc-sources.js';
 
 const CC = '1234567890';
 const FIX = {
@@ -117,12 +117,27 @@ test('resumen: documento con varios archivos toma el más urgente', () => {
 });
 
 test('documentos mostrados: base por defecto, archivos previos y selección explícita', () => {
-  const ids = ['cedula', 'policia', 'procuraduria', 'contraloria', 'rnmc', 'inhabilidades', 'libreta', 'rut', 'redam'];
+  const ids = ['cedula', 'policia', 'procuraduria', 'contraloria', 'rnmc', 'inhabilidades', 'libreta', 'rut', 'eps', 'pension', 'redam'];
   assert.deepEqual(shownDocIds({}, ids), ids.filter((i) => DEFAULT_SHOWN.includes(i)));
+  assert.deepEqual(shownDocIds({}, ids), ['cedula', 'policia', 'procuraduria', 'contraloria', 'eps', 'pension']); // verificación legal 2026-11-03
   assert.ok(shownDocIds({ documents: { rut: ['doc:rut'] } }, ids).includes('rut')); // legado con archivos sigue visible
   assert.deepEqual(shownDocIds({ documentsShown: ['redam'], documents: { rut: ['doc:rut'] } }, ids), ['redam']); // explícita manda
   assert.deepEqual(shownDocIds({ documentsShown: [] }, ids), []);
   assert.deepEqual(shownDocIds({ documentsShown: ['inexistente', 'rut'] }, ids), ['rut']);
+});
+
+test('migración del conjunto base: el antiguo (con RNMC y Ley 1918) cambia; archivos y elecciones explícitas se respetan', () => {
+  const ids = ['cedula', 'policia', 'procuraduria', 'contraloria', 'rnmc', 'inhabilidades', 'eps', 'pension'];
+  // Sin lista propia: RNMC y Ley 1918 ya no salen por defecto...
+  const sinArchivos = shownDocIds({}, ids);
+  assert.ok(!sinArchivos.includes('rnmc') && !sinArchivos.includes('inhabilidades'));
+  // ...salvo que ya tengan archivos (nunca desaparece un documento con soportes cargados).
+  const conArchivos = shownDocIds({ documents: { rnmc: ['doc:rnmc'], inhabilidades: ['doc:inhabilidades', 'doc:inhabilidades:2'] } }, ids);
+  assert.ok(conArchivos.includes('rnmc') && conArchivos.includes('inhabilidades'));
+  // Una lista explícita guardada con el conjunto antiguo se respeta tal cual (no se le añade EPS ni pensión).
+  assert.deepEqual(shownDocIds({ documentsShown: LEGACY_DEFAULT_SHOWN }, ids), ['cedula', 'policia', 'procuraduria', 'contraloria', 'rnmc', 'inhabilidades']);
+  // Listas con ids que ya no existen en el modelo siguen descartándose; los ids nuevos no aparecen solos.
+  assert.deepEqual(shownDocIds({ documentsShown: ['cedula', 'autorizaciondatos'] }, ids), ['cedula']);
 });
 
 test('registro: ids coherentes, URLs https y sin "Registro RUD"', () => {
@@ -163,4 +178,36 @@ test('pageCharCap: reparte el presupuesto con un mínimo por página', () => {
   assert.equal(pageCharCap(1, 120000), 120000);
   assert.equal(pageCharCap(100, 120000), 4000);
   assert.equal(pageCharCap(0), 120000);
+});
+
+test('vigencia por tipo de fuente (verificación legal): norma, criterio y práctica', () => {
+  // Norma: disciplinarios (Res. PGN 143/2002) y REDAM (Ley 2097, art. 4) = 90 días, la plantilla solo puede acortar.
+  for (const id of ['procuraduria', 'procuraduriaespecial', 'redam']) {
+    assert.equal(SOURCES[id].vigencia.tipo, 'oficial', id); assert.equal(SOURCES[id].vigencia.basis, 'norma', id); assert.equal(SOURCES[id].vigencia.dias, 90, id);
+  }
+  assert.equal(computeVigencia(SOURCES.procuraduria, { emitidoEn: '2026-03-25' }, NOW, { maxAgeDays: 365 }).expiresAt, '2026-06-23');
+  // Criterio de la Función Pública: fiscales, 90 días, sin vigencia legal expresa -> el usuario la ajusta.
+  assert.equal(SOURCES.contraloria.vigencia.tipo, 'practica'); assert.equal(SOURCES.contraloria.vigencia.basis, 'criterio'); assert.equal(SOURCES.contraloria.vigencia.dias, 90);
+  assert.equal(computeVigencia(SOURCES.contraloria, { emitidoEn: '2026-03-25' }, NOW).basis, 'criterio');
+  assert.equal(computeVigencia(SOURCES.contraloria, { emitidoEn: '2026-03-25', vigenciaDias: 30 }, NOW).state, 'vencido');
+  // Judiciales y RNMC: sin vigencia legal; ventana de práctica de 30 días configurable.
+  for (const id of ['policia', 'rnmc']) {
+    assert.equal(SOURCES[id].vigencia.tipo, 'practica', id); assert.equal(SOURCES[id].vigencia.basis, 'practica', id); assert.equal(SOURCES[id].vigencia.dias, 30, id);
+    assert.match(SOURCES[id].vigencia.fuente + SOURCES[id].vigencia.nota, /no es norma|no tiene vigencia legal|no existe una vigencia legal/i, id);
+    assert.equal(computeVigencia(SOURCES[id], { emitidoEn: '2026-04-20' }, NOW).state, 'vencido', id);
+    assert.equal(computeVigencia(SOURCES[id], { emitidoEn: '2026-04-20', vigenciaDias: 90 }, NOW).state, 'vigente', id);
+  }
+  assert.equal(computeVigencia(SOURCES.policia, { emitidoEn: '2026-04-20' }, NOW, { maxAgeDays: 60 }).basis, 'plantilla');
+  // Sin vigencia legal: Ley 1918, BDME, libreta, autorizaciones.
+  for (const id of ['inhabilidades', 'bdme', 'libreta', 'autorizaciondatos', 'autorizacion1918', 'leyangel']) assert.equal(computeVigencia(SOURCES[id], { emitidoEn: '2026-01-01' }, NOW).state, 'sin_vigencia', id);
+});
+
+test('REDAM: "Válida hasta" impresa manda; sin ella, 90 días desde la expedición', () => {
+  assert.equal(computeVigencia(SOURCES.redam, { emitidoEn: '2026-03-16' }, NOW).expiresAt, '2026-06-14');
+  assert.equal(computeVigencia(SOURCES.redam, { emitidoEn: '2026-03-16', validaHasta: '2026-06-10' }, NOW).expiresAt, '2026-06-10');
+});
+
+test('certificado especial de la Procuraduría se lee igual que el ordinario', () => {
+  const r = analyzeText(FIX.procuraduria.replace('ORDINARIO', 'ESPECIAL'), 'procuraduriaespecial', CC);
+  assert.equal(r.emitidoEn, '2026-03-25'); assert.equal(r.codigo, '123456789');
 });

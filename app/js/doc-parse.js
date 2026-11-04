@@ -78,6 +78,8 @@ const PER_KIND_ISSUE = {
   contraloria: [/\bhoy\b[^0-9]{0,40}?(?=\d{1,2}\s+de\s)/i, /\bhoy\b\s*,?\s*/i],
   redam: [LABELS_ISSUE],
 };
+// Documentos con el mismo formato de PDF que otro: el certificado especial de la Procuraduría se lee igual que el ordinario.
+PER_KIND_ISSUE.procuraduriaespecial = PER_KIND_ISSUE.procuraduria;
 
 const first = (text, re, group = 1) => { const m = re.exec(text); return m ? m[group] : null; };
 
@@ -186,30 +188,33 @@ export const validMaxAge = (v) => (Number.isFinite(Number(v)) && v !== '' && v !
 
 /** Vigencia de un archivo.
  *  opts.maxAgeDays: antigüedad máxima que exige una plantilla (G20), desde la expedición. En documentos con regla "práctica"
- *  (judiciales, RNMC) sustituye la regla del registro y la del archivo; en los de regla "oficial" (disciplinarios, fiscales, REDAM)
+ *  (judiciales, RNMC y fiscales: sin vigencia legal o solo criterio) sustituye la regla del registro y la del archivo; en los de regla "oficial" (disciplinarios, REDAM: norma)
  *  es un límite adicional: nunca alarga la vigencia oficial ni la fecha "válida hasta" impresa. Sin fecha de expedición no aplica.
  *  Los documentos sin vigencia en el registro (cédula, RUT...) no se evalúan.
- *  -> { state, daysLeft, expiresAt, issuedAt, dias, porPlantilla, label, detail } */
+ *  `basis` = origen de la regla aplicada ('norma' | 'criterio' | 'practica' | 'ninguna', ver VIGENCIA_BASIS; 'plantilla' si manda el límite de la plantilla).
+ *  -> { state, daysLeft, expiresAt, issuedAt, dias, porPlantilla, basis, label, detail } */
 export function computeVigencia(source, meta, now = new Date(), opts = {}) {
   const rule = source?.vigencia;
-  if (!rule || rule.tipo === 'ninguna') return { state: 'sin_vigencia', label: STATE_LABEL.sin_vigencia, detail: rule?.fuente || '' };
+  if (!rule || rule.tipo === 'ninguna') return { state: 'sin_vigencia', label: STATE_LABEL.sin_vigencia, detail: rule?.fuente || '', basis: rule?.basis || 'ninguna' };
   const m = meta || {};
   const dias = Number(m.vigenciaDias) > 0 ? Math.floor(Number(m.vigenciaDias)) : rule.dias;
   const issuedAt = /^\d{4}-\d{2}-\d{2}$/.test(m.emitidoEn || '') ? m.emitidoEn : null;
   const validaHasta = /^\d{4}-\d{2}-\d{2}$/.test(m.validaHasta || '') ? m.validaHasta : null;
   let expiresAt = validaHasta || (issuedAt ? addDays(issuedAt, dias) : null);
   const maxAge = validMaxAge(opts?.maxAgeDays);
-  let porPlantilla = false;
+  let porPlantilla = false, normaLimita = false;
   if (maxAge && issuedAt) {
     const cap = addDays(issuedAt, maxAge);
     const next = rule.tipo === 'practica' ? (validaHasta && validaHasta < cap ? validaHasta : cap) : (expiresAt && expiresAt < cap ? expiresAt : cap);
     porPlantilla = next === cap;
+    normaLimita = rule.tipo === 'oficial' && !!expiresAt && cap > expiresAt; // la plantilla pedía MÁS que la norma citada: no se alarga
     expiresAt = next;
   }
-  if (!expiresAt) return { state: 'no_leido', label: STATE_LABEL.no_leido, detail: 'Escribe la fecha de expedición.', dias };
+  if (!expiresAt) return { state: 'no_leido', label: STATE_LABEL.no_leido, detail: 'Escribe la fecha de expedición.', dias, basis: rule.basis || null };
   const daysLeft = Math.round((utcMs(expiresAt) - todayMs(now)) / DAY);
-  const base = { daysLeft, expiresAt, issuedAt, dias: porPlantilla ? maxAge : dias, porPlantilla };
-  const why = porPlantilla ? ` Límite de ${maxAge} días desde la expedición, según la plantilla.` : '';
+  const base = { daysLeft, expiresAt, issuedAt, dias: porPlantilla ? maxAge : dias, porPlantilla, normaLimita, basis: porPlantilla ? 'plantilla' : rule.basis || null };
+  const why = porPlantilla ? ` Límite de ${maxAge} días desde la expedición, según la plantilla.`
+    : normaLimita ? ` La plantilla permitiría hasta ${maxAge} días, pero este documento tiene un límite fijado por la norma citada que una plantilla no alarga.` : '';
   if (daysLeft < 0) return { ...base, state: 'vencido', label: STATE_LABEL.vencido, detail: `Venció el ${fmtDMY(expiresAt)} (hace ${-daysLeft} ${-daysLeft === 1 ? 'día' : 'días'}).${why}` };
   if (daysLeft <= POR_VENCER_DIAS) {
     const label = daysLeft === 0 ? 'Vence hoy' : `Vence en ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}`;

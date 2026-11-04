@@ -11,6 +11,9 @@ Fecha de la investigación: 2026-10-28. Alcance: obtener ("Obtener" con un clic)
 
 **No se envió ningún dato personal a ningún sitio.** Solo GET de páginas públicas. Un intento de simular el paso "Aceptar términos" de la Policía (POST AJAX sin datos personales) fue denegado por el sistema de permisos y no se repitió, por eso la pantalla de captcha de antecedentes judiciales queda como [N]/[S].
 
+
+> **Correcciones del 2026-11-03.** `docs/VERIFICACION-LEGAL.md` contrasta este documento con la norma y **prevalece donde se contradigan**. Cambios que afectan lo que dice abajo: (1) la Ley "2480/2025" no es la Ley Angel (es la Ley Kiara, cuidado de animales de compania); la Ley Angel es la **Ley 2455 de 2025** (art. 28). (2) El certificado judicial en papel esta suprimido (Decreto-Ley 19/2012, art. 93) y la consulta en linea no tiene vigencia legal (30 a 90 dias es practica). (3) El art. 183 de la Ley 1801/2016 no obliga al ciudadano a presentar un certificado RNMC: sus consecuencias aplican a multas sin pagar tras seis meses y las verifica la autoridad; el RNMC es opcional. (4) Ley 1918/2018: la consulta la hace la entidad con autorizacion escrita del aspirante; la Corte Constitucional (C-407/2020) declaro inexequibles el art. 2 y la frase "por el ICBF" del art. 4 (la nota de "revisar inexequibilidad parcial" queda resuelta); la reverificacion cada 4 meses se mantiene; no es un documento que el candidato aporte. (5) Vigencias: disciplinarios 3 meses (Res. PGN 143/2002, art. 8 en el texto de Bogota, art. 3 segun Funcion Publica) y REDAM 3 meses (Ley 2097, art. 4 par.) son norma; fiscales 3 meses es criterio de Funcion Publica; judiciales y RNMC no tienen vigencia legal. (6) BDME: boletin semestral con cortes al **30 de mayo y 30 de noviembre** (ficha tecnica de la Contaduria), lo que resuelve las "fechas contradictorias"; "impedimento para contratar con el Estado" no esta verificado. (7) Libreta: se puede exigir la situacion militar definida (o certificacion provisional), no la tarjeta fisica (Ley 1861, art. 42; ya con fuente primaria). (8) "Registro RUD" ya no existe en la app. (9) Las entidades de la Rama Ejecutiva verifican por si mismas antecedentes fiscales, disciplinarios y judiciales (Decreto 1083/2015, art. 2.2.5.1.5).
+
 ---
 
 ## 1. Veredicto en una tabla
@@ -137,7 +140,7 @@ Convención de las fichas: **Vigencia** = qué dice la fuente oficial y qué hac
 
 | Campo | Detalle |
 |---|---|
-| Nombre oficial | "Sistema de Consulta de Inhabilidades por Delitos Sexuales" / "Registro de Inhabilidades" (la app usa "Registro RUD": no encontré ese nombre en fuentes oficiales; revisar) [F: https://www.icbf.gov.co/atencion-y-servicios-ciudadania/sistema-de-consulta-de-inhabilidades-por-delitos-sexuales y la página de la Policía] |
+| Nombre oficial | "Sistema de Consulta de Inhabilidades por Delitos Sexuales" / "Registro de Inhabilidades" (la app usaba "Registro RUD": no existe en fuentes oficiales; corregido el 2026-11-03) [F: https://www.icbf.gov.co/atencion-y-servicios-ciudadania/sistema-de-consulta-de-inhabilidades-por-delitos-sexuales y la página de la Policía] |
 | URL | `https://inhabilidades.policia.gov.co:8080/` (consulta en `/consulta`) [V] |
 | API / datos abiertos | Ninguna |
 | Entradas | Tipo y número de documento, **fecha de expedición**, **nombre de la empresa o entidad consultante**, **NIT**, casilla de términos, **reCAPTCHA** [V] |
@@ -229,7 +232,7 @@ Solo relevante para abogados: "Certificado de vigencia" y "Certificado de vigenc
 | Documento | Por qué importa | Fuente | Veredicto |
 |---|---|---|---|
 | **REDAM** (Registro de Deudores Alimentarios Morosos, Ley 2097/2021, Decreto 1310/2022) | Condición para posesionarse en cargos públicos y contratar con el Estado [S: gerencie, El Diario, bogota.gov.co] | `https://www.redam.gov.co/` (SPA). El portal indica que la **Carpeta Ciudadana Digital es el único medio** de consulta y descarga [S: la página no la pude leer; WebFetch devolvió solo el título] | Manual (autenticación digital). **Su PDF es el mejor de todos para ingesta**: trae "Código Verificación: ..." y "**Válida hasta: dd/mm/aaaa**" (expedido 16/03/2026, válido hasta 14/06/2026: 90 días) y validador en `https://registro.redam.gov.co/validate-certificate/` [V: PDF de muestra] |
-| **BDME** (Boletín de Deudores Morosos del Estado, Ley 901 de 2004) | Impedimento para contratar con el Estado | `https://www.contaduria.gov.co/acerca-de-bdme`. Requiere registrarse como usuario con contraseña; consulta por número de identificación; descarga PDF [F]. Boletín semestral con cortes publicados de forma contradictoria (la página dice 30 de julio y 31 de enero; una nota de prensa dice 31 de mayo y 30 de noviembre) [F][S] | Manual |
+| **BDME** (Boletín de Deudores Morosos del Estado, Ley 901 de 2004) | Impedimento para contratar con el Estado (NO verificado el 2026-11-03) | `https://www.contaduria.gov.co/acerca-de-bdme`. Requiere registrarse como usuario con contraseña; consulta por número de identificación; descarga PDF [F]. Boletín semestral con cortes publicados de forma contradictoria (resuelto el 2026-11-03: cortes al 30 de mayo y 30 de noviembre, ficha técnica de la Contaduría) (la página dice 30 de julio y 31 de enero; una nota de prensa dice 31 de mayo y 30 de noviembre) [F][S] | Manual |
 | Certificado de vigencia de cédula | Ver 3.11 | | Manual |
 | Certificado de inhabilidad por animales (5b) | Cargos con animales | | Manual |
 | Certificados específicos por profesión (Junta Central de Contadores, COPNIA, etc.) | Solo si el cargo los exige | No investigado | Fuera de alcance |
@@ -248,8 +251,8 @@ Solo relevante para abogados: "Certificado de vigencia" y "Certificado de vigenc
 | Fiscales | 3 meses (criterio de Función Pública; boletín trimestral) | 90 | [F] mismo concepto; Ley 610/2000 art. 60 |
 | REDAM | 3 meses calendario; el PDF trae "Válida hasta" | usar la fecha del PDF; si falta, 90 | [V] PDF de muestra; [S] guías |
 | Judiciales | La Policía: la consulta no tiene vigencia | 30 (configurable; práctica 30 a 90) | [F] FAQ Policía; práctica [S] |
-| RNMC | No hallada | 30 | [N]; práctica [S] |
-| Inhabilidades Ley 1918 | Reverificación cada 4 meses por la entidad | 120 | [F] página de la Policía; revisar inexequibilidad parcial |
+| RNMC | No hallada | 30 | [N]; práctica [S]. Corregido el 2026-11-03: sin vigencia legal, solo práctica |
+| Inhabilidades Ley 1918 | Reverificación cada 4 meses por la entidad | 120 | [F] página de la Policía; inexequibilidad parcial resuelta el 2026-11-03 (C-407/2020, solo la frase "por el ICBF" del art. 4) |
 | EPS (ADRES) | BDUA se actualiza cada mes | 30 | [F] ADRES; el 30 es práctica [N] |
 | Pensión, Sisbén, RUT, cédula, libreta | Sin norma hallada | 90 (o "sin vencimiento": RUT/libreta) | [N] |
 | PILA | Por periodo cotizado | por periodo | [S] |
